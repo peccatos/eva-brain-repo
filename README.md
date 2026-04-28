@@ -1,4 +1,4 @@
-e^e is not an assistant.
+# e^e is not an assistant.
 
 It is a deterministic decision runtime.
 
