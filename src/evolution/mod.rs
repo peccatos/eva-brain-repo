@@ -2,6 +2,7 @@ pub mod autonomy;
 pub mod benchmark;
 pub mod campaign;
 pub mod dedup;
+pub mod evolution_policy;
 pub mod generator;
 pub mod hypothesis;
 pub mod learning_context;
@@ -10,11 +11,13 @@ pub mod metrics;
 pub mod mutation_portfolio;
 pub mod mutator;
 pub mod patterns;
+pub mod quality;
 pub mod recombination;
 pub mod regression_memory;
 pub mod report_ru;
 pub mod rollback;
 pub mod scorer;
+pub mod strategy_portfolio;
 pub mod success_memory;
 pub mod task_validator;
 pub mod templates;
@@ -32,6 +35,10 @@ pub use dedup::{
     compute_mutation_digest, load_dedup_entries, record_dedup_entry, should_reject_duplicate_bad,
     DedupEntry,
 };
+pub use evolution_policy::{
+    load_or_refresh_evolution_policy, print_evolution_policy, refresh_evolution_policy,
+    EvolutionPolicy,
+};
 pub use generator::{
     generate_from_plan, generate_from_recombined_hypothesis, generate_safe_mutation,
 };
@@ -42,12 +49,15 @@ pub use metrics::{
     learning_summary, load_metrics, refresh_metrics, update_metrics_after_log, EvolutionMetrics,
 };
 pub use mutation_portfolio::{
-    kind_label as portfolio_kind_label, load_portfolio, print_portfolio,
-    update_portfolio_after_log, update_portfolio_after_replay, MutationPortfolio,
-    MutationPortfolioEntry,
+    ensure_portfolio, kind_label as portfolio_kind_label, load_portfolio, print_portfolio,
+    refresh_portfolio, update_portfolio_after_log, update_portfolio_after_replay,
+    MutationPortfolio, MutationPortfolioEntry,
 };
 pub use mutator::apply_mutation;
 pub use patterns::{distill_patterns, DistilledPatternSummary};
+pub use quality::{
+    compute_quality_for_hypothesis, compute_quality_for_run, print_quality_report, QualityMetricsV2,
+};
 pub use recombination::{
     load_recombined_hypotheses, render_recombined_hypotheses, top_recombined_hypothesis,
 };
@@ -57,6 +67,10 @@ pub use report_ru::{
 };
 pub use rollback::rollback_sandbox;
 pub use scorer::{score_cycle, EvolutionScore};
+pub use strategy_portfolio::{
+    ensure_strategy_portfolio, infer_strategy, load_strategy_portfolio, print_strategy_portfolio,
+    refresh_strategy_portfolio, StrategyPortfolio, StrategyPortfolioEntry,
+};
 pub use success_memory::{load_success_patterns, record_success_pattern, SuccessPatternEntry};
 pub use task_validator::{
     load_stored_task_contract, load_task_contract, matches_target_patterns, store_task_contract,

@@ -9,8 +9,9 @@ use crate::contracts::{
     RecombinedHypothesis,
 };
 use crate::evolution::{
-    generator, load_portfolio, memory, CandidateSummary, EvolutionMetrics, MutationPortfolio,
-    MutationPortfolioEntry, RegressionEntry, SuccessPatternEntry,
+    compute_quality_for_hypothesis, ensure_portfolio, ensure_strategy_portfolio, generator,
+    load_or_refresh_evolution_policy, memory, CandidateSummary, EvolutionMetrics,
+    MutationPortfolio, MutationPortfolioEntry, RegressionEntry, SuccessPatternEntry,
 };
 use crate::graph::{load_graph, EvolutionGraph};
 
@@ -64,12 +65,21 @@ struct RecentCandidatePressure {
 }
 
 pub fn load_recombined_hypotheses(memory_root: &str) -> Result<Vec<RecombinedHypothesis>, String> {
+    let project_root = Path::new(memory_root)
+        .parent()
+        .unwrap_or_else(|| Path::new("."));
+    let explicit_policy_exists = Path::new(memory_root)
+        .join("evolution_policy.json")
+        .exists();
     let distilled = load_distilled_summary(memory_root)?;
     let successes = load_success_entries(memory_root)?;
     let regressions = load_regression_entries(memory_root)?;
     let graph = load_graph(&Path::new(memory_root).join("graph.json"))?;
+    let portfolio = ensure_portfolio(memory_root)?;
+    let strategy_portfolio = ensure_strategy_portfolio(memory_root)?;
+    let policy =
+        load_or_refresh_evolution_policy(project_root.to_str().unwrap_or("."), memory_root, None)?;
     let metrics = load_local_metrics(memory_root)?;
-    let portfolio = load_portfolio(memory_root)?;
     let success_kind_stats = collect_success_kind_stats(&successes, &distilled);
     let preferred_objectives = collect_preferred_objectives(memory_root, &distilled, &metrics)?;
     let risky_file_penalties = collect_risky_file_penalties(&regressions, &distilled);
@@ -78,26 +88,49 @@ pub fn load_recombined_hypotheses(memory_root: &str) -> Result<Vec<RecombinedHyp
 
     let mut hypotheses = Vec::new();
     for candidate in candidates {
-        for option in candidate_options(&candidate, &success_kind_stats) {
+        let options = candidate_options(&candidate, &success_kind_stats);
+        let mut filtered_options = options
+            .iter()
+            .filter(|option| {
+                policy.allowed_mutation_kinds.is_empty()
+                    || policy
+                        .allowed_mutation_kinds
+                        .iter()
+                        .any(|kind| kind == &option.mutation_kind)
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        if filtered_options.is_empty() && !explicit_policy_exists {
+            filtered_options = options;
+        }
+        for option in filtered_options {
             if forbidden_kind(&option.mutation_kind) || is_forbidden_target(&option.target) {
                 continue;
             }
             hypotheses.push(build_hypothesis(
+                memory_root,
                 &candidate,
                 &option,
                 &success_kind_stats,
                 &preferred_objectives,
                 &portfolio,
+                &strategy_portfolio,
+                &policy,
                 &recent_pressure,
                 metrics.promoted_count,
-            ));
+            )?);
         }
     }
 
     hypotheses.sort_by(|left, right| {
         right
-            .final_recombination_score
-            .total_cmp(&left.final_recombination_score)
+            .final_strategy_score
+            .total_cmp(&left.final_strategy_score)
+            .then_with(|| {
+                right
+                    .final_recombination_score
+                    .total_cmp(&left.final_recombination_score)
+            })
             .then_with(|| right.confidence.total_cmp(&left.confidence))
             .then_with(|| left.estimated_risk.total_cmp(&right.estimated_risk))
             .then_with(|| left.hypothesis_id.cmp(&right.hypothesis_id))
@@ -115,14 +148,19 @@ pub fn render_recombined_hypotheses(memory_root: &str) -> Result<String, String>
         .take(5)
         .map(|hypothesis| {
             format!(
-                "{} target={} kind={} diversity_bonus={:.2} saturation_penalty={:.2} repeated_target_penalty={:.2} final_score={:.2} expected_gain={:.2} estimated_risk={:.2}",
+                "{} target={} kind={} diversity_bonus={:.2} saturation_penalty={:.2} repeated_target_penalty={:.2} strategy_bonus={:.2} strategy_saturation_penalty={:.2} quality_bonus={:.2} novelty_score={:.2} useful_delta_score={:.2} final_score={:.2} expected_gain={:.2} estimated_risk={:.2}",
                 hypothesis.hypothesis_id,
                 hypothesis.suggested_target,
                 hypothesis.suggested_mutation_kind,
                 hypothesis.diversity_bonus,
                 hypothesis.saturation_penalty,
                 hypothesis.repeated_target_penalty,
-                hypothesis.final_recombination_score,
+                hypothesis.strategy_bonus,
+                hypothesis.strategy_saturation_penalty,
+                hypothesis.quality_bonus,
+                hypothesis.novelty_score,
+                hypothesis.useful_delta_score,
+                hypothesis.final_strategy_score,
                 hypothesis.expected_gain,
                 hypothesis.estimated_risk
             )
@@ -459,14 +497,17 @@ fn candidate_options(
 }
 
 fn build_hypothesis(
+    memory_root: &str,
     candidate: &CandidateFile,
     option: &RecombinationOption,
     success_kind_stats: &BTreeMap<String, (u64, f32)>,
     preferred_objectives: &BTreeMap<String, u64>,
     portfolio: &MutationPortfolio,
+    strategy_portfolio: &crate::evolution::StrategyPortfolio,
+    policy: &crate::evolution::EvolutionPolicy,
     recent_pressure: &RecentCandidatePressure,
     promoted_count: u64,
-) -> RecombinedHypothesis {
+) -> Result<RecombinedHypothesis, String> {
     let objective_history = preferred_objectives
         .get(&candidate.objective)
         .copied()
@@ -534,7 +575,58 @@ fn build_hypothesis(
     source_patterns.sort();
     source_patterns.dedup();
 
-    RecombinedHypothesis {
+    let selected_strategy = crate::evolution::infer_strategy(
+        Some(&policy.selected_strategy),
+        Some(&candidate.objective),
+        &option.mutation_kind,
+        &option.target,
+        &avoided_risks,
+    );
+    let strategy_bonus = if selected_strategy == policy.selected_strategy {
+        0.18 + if policy
+            .preferred_targets
+            .iter()
+            .any(|target| target == &option.target)
+        {
+            0.05
+        } else {
+            0.0
+        }
+    } else {
+        0.04
+    };
+    let strategy_bonus =
+        if candidate.file.contains("validator") && option.mutation_kind == "addunittest" {
+            strategy_bonus + 0.03
+        } else {
+            strategy_bonus
+        };
+    let strategy_saturation_penalty = strategy_portfolio
+        .strategies
+        .iter()
+        .find(|entry| entry.strategy == selected_strategy)
+        .map(|entry| entry.saturation_score)
+        .unwrap_or(0.0);
+    let quality = compute_quality_for_hypothesis(
+        memory_root,
+        &option.mutation_kind,
+        &option.target,
+        &selected_strategy,
+        &source_patterns,
+        &avoided_risks,
+    )?;
+    let quality_bonus = quality.quality_score * 0.2;
+    let policy_risk_penalty = if estimated_risk > policy.risk_limit {
+        (estimated_risk - policy.risk_limit) * 0.8
+    } else {
+        0.0
+    };
+    let final_strategy_score = (final_recombination_score + strategy_bonus + quality_bonus
+        - strategy_saturation_penalty
+        - policy_risk_penalty)
+        .clamp(-1.0, 3.0);
+
+    Ok(RecombinedHypothesis {
         hypothesis_id: format!(
             "recombined:{}:{}:{}",
             sanitize_id(&candidate.file),
@@ -553,6 +645,8 @@ fn build_hypothesis(
             saturation_penalty,
             repeated_target_penalty,
         ),
+        selected_strategy,
+        policy_reason_ru: policy.policy_reason_ru.clone(),
         expected_gain,
         estimated_risk,
         confidence,
@@ -560,7 +654,17 @@ fn build_hypothesis(
         saturation_penalty,
         repeated_target_penalty,
         final_recombination_score,
-    }
+        strategy_bonus,
+        strategy_saturation_penalty,
+        quality_bonus,
+        novelty_score: quality.novelty_score,
+        useful_delta_score: quality.useful_delta_score,
+        duplicate_suppression_score: quality.duplicate_suppression_score,
+        regression_avoidance_score: quality.regression_avoidance_score,
+        coverage_proxy_score: quality.coverage_proxy_score,
+        quality_score: quality.quality_score,
+        final_strategy_score,
+    })
 }
 
 fn preferred_objective_for_file(

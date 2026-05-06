@@ -88,10 +88,22 @@ fn build_report(
         avoided_risks: entry.recombined_avoided_risks.clone(),
         recombination_reason_ru: entry.recombination_reason_ru.clone(),
         portfolio_reason_ru: entry.portfolio_reason_ru.clone(),
+        selected_strategy: entry.selected_strategy.clone(),
+        policy_reason_ru: entry.policy_reason_ru.clone(),
         diversity_bonus: entry.diversity_bonus,
         saturation_penalty: entry.saturation_penalty,
         repeated_target_penalty: entry.repeated_target_penalty,
         final_recombination_score: entry.final_recombination_score,
+        strategy_bonus: entry.strategy_bonus,
+        strategy_saturation_penalty: entry.strategy_saturation_penalty,
+        quality_bonus: entry.quality_bonus,
+        novelty_score: entry.novelty_score,
+        useful_delta_score: entry.useful_delta_score,
+        duplicate_suppression_score: entry.duplicate_suppression_score,
+        regression_avoidance_score: entry.regression_avoidance_score,
+        coverage_proxy_score: entry.coverage_proxy_score,
+        quality_score: entry.quality_score,
+        final_strategy_score: entry.final_strategy_score,
         sandbox_ru: sandbox_ru(entry),
         checks_ru: checks_ru(entry),
         score_ru: score_ru(entry),
@@ -109,11 +121,13 @@ fn render_markdown(report: &EvolutionReport) -> String {
         && report.avoided_risks.is_empty()
         && report.recombination_reason_ru.is_none()
         && report.portfolio_reason_ru.is_none()
+        && report.selected_strategy.is_none()
+        && report.policy_reason_ru.is_none()
     {
         String::new()
     } else {
         format!(
-            "\n## Рекомбинация\nГипотеза: {}\nSource patterns: {}\nAvoided risks: {}\nПричина: {}\nPortfolio reason: {}\nDiversity bonus: {:.2}\nSaturation penalty: {:.2}\nRepeated target penalty: {:.2}\nFinal recombination score: {:.2}\n",
+            "\n## Рекомбинация\nГипотеза: {}\nSource patterns: {}\nAvoided risks: {}\nПричина: {}\nPortfolio reason: {}\nSelected strategy: {}\nPolicy reason: {}\nDiversity bonus: {:.2}\nSaturation penalty: {:.2}\nRepeated target penalty: {:.2}\nFinal recombination score: {:.2}\nStrategy bonus: {:.2}\nStrategy saturation penalty: {:.2}\nQuality bonus: {:.2}\nNovelty score: {:.2}\nUseful delta score: {:.2}\nDuplicate suppression score: {:.2}\nRegression avoidance score: {:.2}\nCoverage proxy score: {:.2}\nQuality score: {:.2}\nFinal strategy score: {:.2}\n",
             report.hypothesis_id.as_deref().unwrap_or("нет"),
             if report.source_patterns.is_empty() {
                 "(none)".to_string()
@@ -130,10 +144,22 @@ fn render_markdown(report: &EvolutionReport) -> String {
                 .as_deref()
                 .unwrap_or("нет"),
             report.portfolio_reason_ru.as_deref().unwrap_or("нет"),
+            report.selected_strategy.as_deref().unwrap_or("нет"),
+            report.policy_reason_ru.as_deref().unwrap_or("нет"),
             report.diversity_bonus,
             report.saturation_penalty,
             report.repeated_target_penalty,
-            report.final_recombination_score
+            report.final_recombination_score,
+            report.strategy_bonus,
+            report.strategy_saturation_penalty,
+            report.quality_bonus,
+            report.novelty_score,
+            report.useful_delta_score,
+            report.duplicate_suppression_score,
+            report.regression_avoidance_score,
+            report.coverage_proxy_score,
+            report.quality_score,
+            report.final_strategy_score
         )
     };
     format!(
@@ -196,10 +222,22 @@ fn load_candidate_entry(
         recombined_avoided_risks: Vec::new(),
         recombination_reason_ru: None,
         portfolio_reason_ru: None,
+        selected_strategy: None,
+        policy_reason_ru: None,
         diversity_bonus: 0.0,
         saturation_penalty: 0.0,
         repeated_target_penalty: 0.0,
         final_recombination_score: 0.0,
+        strategy_bonus: 0.0,
+        strategy_saturation_penalty: 0.0,
+        quality_bonus: 0.0,
+        novelty_score: 0.0,
+        useful_delta_score: 0.0,
+        duplicate_suppression_score: 0.0,
+        regression_avoidance_score: 0.0,
+        coverage_proxy_score: 0.0,
+        quality_score: 0.0,
+        final_strategy_score: 0.0,
         mutation_id: summary.mutation_id.clone(),
         mutation_digest: summary.mutation_digest.clone(),
         status: summary.status,

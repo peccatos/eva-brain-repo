@@ -21,10 +21,22 @@ struct PlanContext {
     recombined_avoided_risks: Vec<String>,
     recombination_reason_ru: Option<String>,
     portfolio_reason_ru: Option<String>,
+    selected_strategy: Option<String>,
+    policy_reason_ru: Option<String>,
     diversity_bonus: f32,
     saturation_penalty: f32,
     repeated_target_penalty: f32,
     final_recombination_score: f32,
+    strategy_bonus: f32,
+    strategy_saturation_penalty: f32,
+    quality_bonus: f32,
+    novelty_score: f32,
+    useful_delta_score: f32,
+    duplicate_suppression_score: f32,
+    regression_avoidance_score: f32,
+    coverage_proxy_score: f32,
+    quality_score: f32,
+    final_strategy_score: f32,
 }
 
 pub fn run_evolution_cycle(project_root: &str) -> Result<(), String> {
@@ -89,10 +101,22 @@ pub fn run_planned_evolution_cycle_for_task(
             recombined_avoided_risks: Vec::new(),
             recombination_reason_ru: None,
             portfolio_reason_ru: None,
+            selected_strategy: None,
+            policy_reason_ru: None,
             diversity_bonus: 0.0,
             saturation_penalty: 0.0,
             repeated_target_penalty: 0.0,
             final_recombination_score: 0.0,
+            strategy_bonus: 0.0,
+            strategy_saturation_penalty: 0.0,
+            quality_bonus: 0.0,
+            novelty_score: 0.0,
+            useful_delta_score: 0.0,
+            duplicate_suppression_score: 0.0,
+            regression_avoidance_score: 0.0,
+            coverage_proxy_score: 0.0,
+            quality_score: 0.0,
+            final_strategy_score: 0.0,
         }),
     )
 }
@@ -183,6 +207,7 @@ fn run_evolution_cycle_with_mutation(
         )?;
         metrics::update_metrics_after_log(memory_root, &final_entry)?;
         update_portfolio_after_log(memory_root, &final_entry)?;
+        let _ = crate::evolution::refresh_strategy_portfolio(memory_root);
         return Err("duplicate bad mutation rejected before sandbox".to_string());
     }
 
@@ -264,6 +289,7 @@ fn run_evolution_cycle_with_mutation(
         crate::graph::update_graph_for_evolution(memory_root, &entry)?;
         metrics::update_metrics_after_log(memory_root, &entry)?;
         update_portfolio_after_log(memory_root, &entry)?;
+        let _ = crate::evolution::refresh_strategy_portfolio(memory_root);
     }
 
     match (result, cleanup) {
@@ -366,10 +392,22 @@ fn with_recombination_context(
         entry.recombined_avoided_risks = context.recombined_avoided_risks.clone();
         entry.recombination_reason_ru = context.recombination_reason_ru.clone();
         entry.portfolio_reason_ru = context.portfolio_reason_ru.clone();
+        entry.selected_strategy = context.selected_strategy.clone();
+        entry.policy_reason_ru = context.policy_reason_ru.clone();
         entry.diversity_bonus = context.diversity_bonus;
         entry.saturation_penalty = context.saturation_penalty;
         entry.repeated_target_penalty = context.repeated_target_penalty;
         entry.final_recombination_score = context.final_recombination_score;
+        entry.strategy_bonus = context.strategy_bonus;
+        entry.strategy_saturation_penalty = context.strategy_saturation_penalty;
+        entry.quality_bonus = context.quality_bonus;
+        entry.novelty_score = context.novelty_score;
+        entry.useful_delta_score = context.useful_delta_score;
+        entry.duplicate_suppression_score = context.duplicate_suppression_score;
+        entry.regression_avoidance_score = context.regression_avoidance_score;
+        entry.coverage_proxy_score = context.coverage_proxy_score;
+        entry.quality_score = context.quality_score;
+        entry.final_strategy_score = context.final_strategy_score;
     }
     entry
 }
@@ -395,9 +433,21 @@ fn recombined_plan_context(hypothesis: &RecombinedHypothesis) -> PlanContext {
         recombined_avoided_risks: hypothesis.avoided_risks.clone(),
         recombination_reason_ru: Some(hypothesis.reason_ru.clone()),
         portfolio_reason_ru: Some(hypothesis.portfolio_reason_ru.clone()),
+        selected_strategy: Some(hypothesis.selected_strategy.clone()),
+        policy_reason_ru: Some(hypothesis.policy_reason_ru.clone()),
         diversity_bonus: hypothesis.diversity_bonus,
         saturation_penalty: hypothesis.saturation_penalty,
         repeated_target_penalty: hypothesis.repeated_target_penalty,
         final_recombination_score: hypothesis.final_recombination_score,
+        strategy_bonus: hypothesis.strategy_bonus,
+        strategy_saturation_penalty: hypothesis.strategy_saturation_penalty,
+        quality_bonus: hypothesis.quality_bonus,
+        novelty_score: hypothesis.novelty_score,
+        useful_delta_score: hypothesis.useful_delta_score,
+        duplicate_suppression_score: hypothesis.duplicate_suppression_score,
+        regression_avoidance_score: hypothesis.regression_avoidance_score,
+        coverage_proxy_score: hypothesis.coverage_proxy_score,
+        quality_score: hypothesis.quality_score,
+        final_strategy_score: hypothesis.final_strategy_score,
     }
 }

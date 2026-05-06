@@ -54,7 +54,7 @@ pub fn load_portfolio(memory_root: &str) -> Result<MutationPortfolio, String> {
 }
 
 pub fn print_portfolio(memory_root: &str) -> Result<String, String> {
-    let portfolio = load_portfolio(memory_root)?;
+    let portfolio = ensure_portfolio(memory_root)?;
     if portfolio.kinds.is_empty() {
         return Ok("(none)".to_string());
     }
@@ -77,6 +77,76 @@ pub fn print_portfolio(memory_root: &str) -> Result<String, String> {
         })
         .collect::<Vec<_>>()
         .join("\n"))
+}
+
+pub fn ensure_portfolio(memory_root: &str) -> Result<MutationPortfolio, String> {
+    let portfolio = load_portfolio(memory_root)?;
+    if portfolio.kinds.is_empty() {
+        return refresh_portfolio(memory_root);
+    }
+    Ok(portfolio)
+}
+
+pub fn refresh_portfolio(memory_root: &str) -> Result<MutationPortfolio, String> {
+    let mut portfolio = MutationPortfolio::default();
+    let logs = load_logs(memory_root)?;
+    for entry in &logs {
+        let kind = entry.mutation_kind.to_ascii_lowercase();
+        let slot = upsert_entry(&mut portfolio, &kind);
+        let previous_seen = slot.seen_count;
+        slot.seen_count += 1;
+        if entry.cargo_check_ok && entry.cargo_test_ok {
+            slot.success_count += 1;
+        }
+        if entry.status == crate::contracts::EvolutionStatus::Candidate {
+            slot.candidate_count += 1;
+        }
+        if entry.status == crate::contracts::EvolutionStatus::Promoted || entry.retained_in_core {
+            slot.promoted_count += 1;
+        }
+        slot.average_score = if previous_seen == 0 {
+            entry.score
+        } else {
+            ((slot.average_score * previous_seen as f32) + entry.score) / slot.seen_count as f32
+        };
+        slot.last_used_at = slot.last_used_at.max(entry.timestamp_unix);
+    }
+
+    let replay_dir = Path::new(memory_root).join("replays");
+    if replay_dir.exists() {
+        let mut replay_paths = fs::read_dir(&replay_dir)
+            .map_err(|error| format!("failed to read replays: {error}"))?
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .collect::<Vec<_>>();
+        replay_paths.sort();
+        for path in replay_paths {
+            let contents = fs::read_to_string(&path)
+                .map_err(|error| format!("failed to read replay file: {error}"))?;
+            let replay: ReplayResult = serde_json::from_str(&contents)
+                .map_err(|error| format!("failed to parse replay file: {error}"))?;
+            if replay.matches_stored_summary
+                && replay.cargo_check_ok
+                && replay.cargo_test_ok
+                && replay.cargo_run_ok
+                && replay.replay_status != crate::contracts::EvolutionStatus::Failed
+            {
+                let run_id = path
+                    .file_stem()
+                    .and_then(|name| name.to_str())
+                    .unwrap_or_default();
+                if let Ok(mutation) = memory::load_candidate(memory_root, run_id) {
+                    let slot = upsert_entry(&mut portfolio, &kind_label(mutation.kind));
+                    slot.replay_passed_count += 1;
+                    slot.last_used_at = slot.last_used_at.max(replay.timestamp_unix);
+                }
+            }
+        }
+    }
+
+    refresh_saturation_scores(&mut portfolio);
+    write_portfolio(memory_root, &portfolio)?;
+    Ok(portfolio)
 }
 
 pub fn update_portfolio_after_log(
@@ -132,6 +202,20 @@ pub fn update_portfolio_after_replay(
 fn write_portfolio(memory_root: &str, portfolio: &MutationPortfolio) -> Result<(), String> {
     let path = Path::new(memory_root).join("portfolio.json");
     memory::write_json(path, portfolio)
+}
+
+fn load_logs(memory_root: &str) -> Result<Vec<EvolutionLogEntry>, String> {
+    let path = Path::new(memory_root).join("evolution.jsonl");
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+    let contents = fs::read_to_string(path)
+        .map_err(|error| format!("failed to read evolution log: {error}"))?;
+    Ok(contents
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .filter_map(|line| serde_json::from_str::<EvolutionLogEntry>(line).ok())
+        .collect())
 }
 
 fn upsert_entry<'a>(

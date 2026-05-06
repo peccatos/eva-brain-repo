@@ -1,9 +1,11 @@
 use eva_runtime_with_task_validator::{
     autonomy_status, build_project_phase_runtime_output, candidate_diff, distill_patterns,
     ingest_repo_patterns, learning_summary, list_candidates, load_metrics, print_benchmark,
-    print_campaign, print_last_campaign_report, print_last_report, print_portfolio, print_report,
-    promote_candidate, refresh_metrics, refresh_report, render_plans, render_recombined_hypotheses,
-    replay_candidate, review_candidate, run_benchmark, run_evolution_cycle, run_planned_cycles,
+    print_campaign, print_evolution_policy, print_last_campaign_report, print_last_report,
+    print_portfolio, print_quality_report, print_report, print_strategy_portfolio,
+    promote_candidate, refresh_metrics, refresh_portfolio, refresh_report,
+    refresh_strategy_portfolio, render_plans, render_recombined_hypotheses, replay_candidate,
+    review_candidate, run_benchmark, run_evolution_cycle, run_planned_cycles,
     run_planned_evolution_cycle, run_recombined_evolution_cycle, run_repo_patch_report,
     run_stored_campaign, run_task_from_path, serve_runtime_daemon, should_run_repo_patch_mode,
     CycleInput, RepoPatchCliConfig, RuntimeCliCommand, RuntimeCycleRunner, RUNTIME_CLI_HELP,
@@ -132,6 +134,62 @@ fn main() {
                 Ok(summary) => println!("{summary}"),
                 Err(err) => {
                     eprintln!("portfolio_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::PortfolioRefresh) => {
+            match refresh_portfolio("memory") {
+                Ok(portfolio) => println!(
+                    "{}",
+                    serde_json::to_string_pretty(&portfolio).expect("serialize portfolio")
+                ),
+                Err(err) => {
+                    eprintln!("portfolio_refresh_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::StrategyPortfolio) => {
+            match print_strategy_portfolio("memory") {
+                Ok(summary) => println!("{summary}"),
+                Err(err) => {
+                    eprintln!("strategy_portfolio_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::StrategyPortfolioRefresh) => {
+            match refresh_strategy_portfolio("memory") {
+                Ok(portfolio) => println!(
+                    "{}",
+                    serde_json::to_string_pretty(&portfolio).expect("serialize strategy portfolio")
+                ),
+                Err(err) => {
+                    eprintln!("strategy_portfolio_refresh_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::EvolutionPolicy) => {
+            match print_evolution_policy(".", "memory", None) {
+                Ok(policy) => println!("{policy}"),
+                Err(err) => {
+                    eprintln!("evolution_policy_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::QualityReport(run_id)) => {
+            match print_quality_report("memory", &run_id) {
+                Ok(report) => println!("{report}"),
+                Err(err) => {
+                    eprintln!("quality_report_error: {err}");
                     std::process::exit(1);
                 }
             }

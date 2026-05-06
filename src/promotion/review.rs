@@ -12,9 +12,14 @@ pub struct CandidateReview {
     pub run_id: String,
     pub mutation_kind: String,
     pub target_file: String,
+    pub selected_strategy: Option<String>,
     pub score: f32,
     pub risk: f32,
     pub useful_change: bool,
+    pub quality_score: f32,
+    pub novelty_score: f32,
+    pub useful_delta_score: f32,
+    pub regression_avoidance_score: f32,
     pub replay_status: String,
     pub report_path: String,
     pub promotion_allowed: bool,
@@ -28,6 +33,11 @@ pub struct CandidateReviewReport {
     pub run_id: String,
     pub promotion_allowed: bool,
     pub replay_status: String,
+    pub selected_strategy: Option<String>,
+    pub quality_score: f32,
+    pub novelty_score: f32,
+    pub useful_delta_score: f32,
+    pub regression_avoidance_score: f32,
     pub promotion_ready_reason: Option<String>,
     pub promotion_blockers: Vec<String>,
     pub recommendation_ru: String,
@@ -48,6 +58,7 @@ pub fn review_candidate(
     let report_json_path = Path::new(memory_root)
         .join("reports")
         .join(format!("{run_id}.report.json"));
+    let report = load_report_json(memory_root, run_id).ok();
 
     let mutation_kind = summary
         .as_ref()
@@ -87,9 +98,28 @@ pub fn review_candidate(
         run_id: run_id.to_string(),
         mutation_kind: mutation_kind.clone(),
         target_file: target_file.clone(),
+        selected_strategy: report
+            .as_ref()
+            .and_then(|value| value.selected_strategy.clone()),
         score,
         risk,
         useful_change,
+        quality_score: report
+            .as_ref()
+            .map(|value| value.quality_score)
+            .unwrap_or(0.0),
+        novelty_score: report
+            .as_ref()
+            .map(|value| value.novelty_score)
+            .unwrap_or(0.0),
+        useful_delta_score: report
+            .as_ref()
+            .map(|value| value.useful_delta_score)
+            .unwrap_or(0.0),
+        regression_avoidance_score: report
+            .as_ref()
+            .map(|value| value.regression_avoidance_score)
+            .unwrap_or(0.0),
         replay_status: replay_status.clone(),
         report_path: report_path.display().to_string(),
         promotion_allowed,
@@ -100,6 +130,25 @@ pub fn review_candidate(
             score,
             risk,
             useful_change,
+            report
+                .as_ref()
+                .and_then(|value| value.selected_strategy.as_deref()),
+            report
+                .as_ref()
+                .map(|value| value.quality_score)
+                .unwrap_or(0.0),
+            report
+                .as_ref()
+                .map(|value| value.novelty_score)
+                .unwrap_or(0.0),
+            report
+                .as_ref()
+                .map(|value| value.useful_delta_score)
+                .unwrap_or(0.0),
+            report
+                .as_ref()
+                .map(|value| value.regression_avoidance_score)
+                .unwrap_or(0.0),
             &replay_status,
             promotion_allowed,
             &target_file,
@@ -133,6 +182,11 @@ fn write_review_report(memory_root: &str, review: &CandidateReview) -> Result<()
         run_id: review.run_id.clone(),
         promotion_allowed: review.promotion_allowed,
         replay_status: review.replay_status.clone(),
+        selected_strategy: review.selected_strategy.clone(),
+        quality_score: review.quality_score,
+        novelty_score: review.novelty_score,
+        useful_delta_score: review.useful_delta_score,
+        regression_avoidance_score: review.regression_avoidance_score,
         promotion_ready_reason: review.promotion_ready_reason.clone(),
         promotion_blockers: review.promotion_blockers.clone(),
         recommendation_ru: review.russian_summary.clone(),
@@ -171,6 +225,11 @@ fn collect_blockers(
         }
         if summary.score < crate::evolution::memory::PROMOTION_THRESHOLD {
             blockers.push("score_below_threshold".to_string());
+        }
+        if let Ok(report) = load_report_json(memory_root, &summary.run_id) {
+            if report.quality_score > 0.0 && report.quality_score < 0.75 {
+                blockers.push("quality_score_low".to_string());
+            }
         }
         if promoted_digest_exists(memory_root, &summary.mutation_digest)? {
             blockers.push("already_promoted".to_string());
@@ -274,14 +333,31 @@ fn russian_summary(
     score: f32,
     risk: f32,
     useful_change: bool,
+    selected_strategy: Option<&str>,
+    quality_score: f32,
+    novelty_score: f32,
+    useful_delta_score: f32,
+    regression_avoidance_score: f32,
     replay_status: &str,
     promotion_allowed: bool,
     target_file: &str,
     mutation_kind: &str,
 ) -> String {
     format!(
-        "Кандидат {} меняет {} через {}. Score {:.1}, risk {:.2}, useful={}, replay={}, promotion_ready={}.",
-        run_id, target_file, mutation_kind, score, risk, useful_change, replay_status, promotion_allowed
+        "Кандидат {} меняет {} через {}. strategy={}, score {:.1}, quality {:.2}, novelty {:.2}, useful_delta {:.2}, regression_avoidance {:.2}, risk {:.2}, useful={}, replay={}, promotion_ready={}.",
+        run_id,
+        target_file,
+        mutation_kind,
+        selected_strategy.unwrap_or("нет"),
+        score,
+        quality_score,
+        novelty_score,
+        useful_delta_score,
+        regression_avoidance_score,
+        risk,
+        useful_change,
+        replay_status,
+        promotion_allowed
     )
 }
 
@@ -297,13 +373,18 @@ fn render_review_markdown(review: &CandidateReview) -> String {
             .join("\n")
     };
     format!(
-        "# Review EVA\n\n## Кандидат\nrun_id: {}\nkind: {}\nfile: {}\n\n## Что изменено\n{}\n\n## Почему полезно\nuseful_change={}\nscore={:.1}\n\n## Проверки\nrisk={:.2}\nreport={}\n\n## Replay\nstatus={}\n\n## Риск\nОценка риска {:.2}\n\n## Готовность к promotion\npromotion_ready={}\nreason={}\n{}\n\n## Рекомендация EVA\n{}\n",
+        "# Review EVA\n\n## Кандидат\nrun_id: {}\nkind: {}\nfile: {}\nstrategy: {}\n\n## Что изменено\n{}\n\n## Почему полезно\nuseful_change={}\nscore={:.1}\nquality_score={:.2}\nnovelty_score={:.2}\nuseful_delta_score={:.2}\nregression_avoidance_score={:.2}\n\n## Проверки\nrisk={:.2}\nreport={}\n\n## Replay\nstatus={}\n\n## Риск\nОценка риска {:.2}\n\n## Готовность к promotion\npromotion_ready={}\nreason={}\n{}\n\n## Рекомендация EVA\n{}\n",
         review.run_id,
         review.mutation_kind,
         review.target_file,
+        review.selected_strategy.as_deref().unwrap_or("нет"),
         review.target_file,
         review.useful_change,
         review.score,
+        review.quality_score,
+        review.novelty_score,
+        review.useful_delta_score,
+        review.regression_avoidance_score,
         review.risk,
         review.report_path,
         review.replay_status,

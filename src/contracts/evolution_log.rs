@@ -30,6 +30,10 @@ pub struct EvolutionLogEntry {
     pub recombination_reason_ru: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub portfolio_reason_ru: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub selected_strategy: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub policy_reason_ru: Option<String>,
     #[serde(default)]
     pub diversity_bonus: f32,
     #[serde(default)]
@@ -38,6 +42,26 @@ pub struct EvolutionLogEntry {
     pub repeated_target_penalty: f32,
     #[serde(default)]
     pub final_recombination_score: f32,
+    #[serde(default)]
+    pub strategy_bonus: f32,
+    #[serde(default)]
+    pub strategy_saturation_penalty: f32,
+    #[serde(default)]
+    pub quality_bonus: f32,
+    #[serde(default)]
+    pub novelty_score: f32,
+    #[serde(default)]
+    pub useful_delta_score: f32,
+    #[serde(default)]
+    pub duplicate_suppression_score: f32,
+    #[serde(default)]
+    pub regression_avoidance_score: f32,
+    #[serde(default)]
+    pub coverage_proxy_score: f32,
+    #[serde(default)]
+    pub quality_score: f32,
+    #[serde(default)]
+    pub final_strategy_score: f32,
     pub mutation_id: String,
     #[serde(default)]
     pub mutation_digest: String,

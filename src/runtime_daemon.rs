@@ -50,6 +50,21 @@ pub const RUNTIME_CLI_HELP: &str = r#"EVA runtime commands:
   cargo run -- --portfolio
       Print mutation portfolio summary with saturation state.
 
+  cargo run -- --portfolio-refresh
+      Rebuild mutation portfolio from stored memory artifacts.
+
+  cargo run -- --strategy-portfolio
+      Print strategy portfolio summary.
+
+  cargo run -- --strategy-portfolio-refresh
+      Rebuild strategy portfolio from stored memory artifacts.
+
+  cargo run -- --evolution-policy
+      Print current deterministic evolution policy.
+
+  cargo run -- --quality-report <RUN_ID>
+      Print quality metrics v2 for a stored run.
+
   cargo run -- --learning-summary
       Print compact learning memory summary.
 
@@ -127,6 +142,11 @@ pub enum RuntimeCliCommand {
     Metrics,
     MetricsRefresh,
     Portfolio,
+    PortfolioRefresh,
+    StrategyPortfolio,
+    StrategyPortfolioRefresh,
+    EvolutionPolicy,
+    QualityReport(String),
     LearningSummary,
     LastReport,
     Report(String),
@@ -257,6 +277,18 @@ impl RuntimeCliCommand {
         if raw_args == ["--portfolio"] {
             return Ok(Self::Portfolio);
         }
+        if raw_args == ["--portfolio-refresh"] {
+            return Ok(Self::PortfolioRefresh);
+        }
+        if raw_args == ["--strategy-portfolio"] {
+            return Ok(Self::StrategyPortfolio);
+        }
+        if raw_args == ["--strategy-portfolio-refresh"] {
+            return Ok(Self::StrategyPortfolioRefresh);
+        }
+        if raw_args == ["--evolution-policy"] {
+            return Ok(Self::EvolutionPolicy);
+        }
         if raw_args == ["--learning-summary"] {
             return Ok(Self::LearningSummary);
         }
@@ -289,6 +321,9 @@ impl RuntimeCliCommand {
         }
         if raw_args.len() == 2 && raw_args[0] == "--candidate-diff" {
             return Ok(Self::CandidateDiff(raw_args[1].clone()));
+        }
+        if raw_args.len() == 2 && raw_args[0] == "--quality-report" {
+            return Ok(Self::QualityReport(raw_args[1].clone()));
         }
         if raw_args.len() == 2 && raw_args[0] == "--evolve-planned-n" {
             return Ok(Self::EvolvePlannedN(raw_args[1].parse::<usize>().map_err(

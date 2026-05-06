@@ -113,6 +113,7 @@ pub fn replay_candidate(project_root: &str, memory_root: &str, run_id: &str) -> 
     crate::evolution::metrics::update_metrics_after_replay(memory_root, &replay)?;
     memory::store_replay_result(memory_root, run_id, &replay)?;
     update_portfolio_after_replay(memory_root, mutation.kind, &replay)?;
+    let _ = crate::evolution::refresh_strategy_portfolio(memory_root);
     refresh_report(memory_root, run_id)?;
     Ok(())
 }
@@ -171,6 +172,7 @@ pub fn promote_candidate(
     )?;
     crate::evolution::metrics::update_metrics_after_log(memory_root, &entry)?;
     update_portfolio_after_log(memory_root, &entry)?;
+    let _ = crate::evolution::refresh_strategy_portfolio(memory_root);
     Ok(())
 }
 
