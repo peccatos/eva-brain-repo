@@ -97,7 +97,10 @@ edition = "2021"
 fn repo_patch_report_fails_cleanly_for_non_rust_repo() {
     let source_repo = init_git_repo(
         "repo_patch_report_fail",
-        &[("README.md", "# sample\n"), ("src/index.txt", "plain text\n")],
+        &[
+            ("README.md", "# sample\n"),
+            ("src/index.txt", "plain text\n"),
+        ],
     );
     let output_root = unique_tool_root("repo_patch_report_fail_output");
     let report_path = output_root.join("eva_output").join("report.md");
@@ -144,5 +147,8 @@ fn repo_patch_cli_parser_accepts_contract_flags() {
     assert_eq!(config.branch.as_deref(), Some("main"));
     assert_eq!(config.max_changed_files, 7);
     assert_eq!(config.report_path, "./eva_output/custom_report.md");
-    assert_eq!(config.machine_summary_path, "./eva_output/custom_summary.json");
+    assert_eq!(
+        config.machine_summary_path,
+        "./eva_output/custom_summary.json"
+    );
 }

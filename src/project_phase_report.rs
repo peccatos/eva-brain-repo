@@ -56,7 +56,8 @@ impl ProjectPhaseReport {
             } else if aggregate.reproducible_cases > 0 {
                 "Главный блокер — benchmark-кейсы воспроизводятся, но repair loop ещё не даёт устойчивых побед.".to_string()
             } else {
-                "Главный блокер — пока нет подтверждённой серии воспроизводимых кейсов для ремонта.".to_string()
+                "Главный блокер — пока нет подтверждённой серии воспроизводимых кейсов для ремонта."
+                    .to_string()
             }
         } else {
             "Главный блокер — benchmark-сигналы ещё не подгружены, поэтому система видит только локальный runtime срез.".to_string()
@@ -81,11 +82,13 @@ impl ProjectPhaseReport {
                 audit.mutations_attempted
             )
         } else {
-            "Подтверждены локальный runtime cycle, русский фазовый отчёт и repo patch mode.".to_string()
+            "Подтверждены локальный runtime cycle, русский фазовый отчёт и repo patch mode."
+                .to_string()
         };
         let next_required_step_ru = if let Some(aggregate) = &audit.benchmark {
             if aggregate.success_rate > 0.0 {
-                "Нужно увеличить число успешных фиксов и удержать валидацию без регрессий.".to_string()
+                "Нужно увеличить число успешных фиксов и удержать валидацию без регрессий."
+                    .to_string()
             } else {
                 "Нужно получить хотя бы один успешный фикс на воспроизводимом кейсе и подтвердить это серией валидаций.".to_string()
             }
@@ -93,7 +96,8 @@ impl ProjectPhaseReport {
             "Нужно запустить benchmark pipeline на локальном fixture или реальном репозитории и получить benchmark-метрики.".to_string()
         };
         let recommended_mode_ru = if audit.benchmark.is_some() {
-            "Работать в benchmark режиме с ограниченным budget и явным контролем mutation/rollback.".to_string()
+            "Работать в benchmark режиме с ограниченным budget и явным контролем mutation/rollback."
+                .to_string()
         } else {
             "Работать в локальном demo режиме и затем переходить к benchmark pipeline.".to_string()
         };
@@ -128,7 +132,10 @@ fn classify_phase(audit: &RuntimeAudit) -> (String, ProjectPhaseStatus) {
             );
         }
         if aggregate.reproducible_cases > 0 {
-            return ("benchmark_reproduction".to_string(), ProjectPhaseStatus::Partial);
+            return (
+                "benchmark_reproduction".to_string(),
+                ProjectPhaseStatus::Partial,
+            );
         }
     }
 

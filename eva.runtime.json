@@ -1,0 +1,19 @@
+{
+  "listen_addr": "127.0.0.1:8765",
+  "default_model_id": "qwen3-local",
+  "models": [
+    {
+      "id": "qwen3-local",
+      "endpoint": "http://127.0.0.1:11434/v1/chat/completions",
+      "model": "qwen3:1.7b",
+      "timeout_secs": 120
+    },
+    {
+      "id": "eva-lite",
+      "endpoint": "builtin://eva-lite",
+      "model": "eva-lite",
+      "timeout_secs": 30
+    }
+  ],
+  "managed_servers": []
+}

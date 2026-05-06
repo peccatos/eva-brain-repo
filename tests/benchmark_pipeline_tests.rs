@@ -19,8 +19,11 @@ fn runner_records_reproducible_case_and_mutation_attempt() {
         "[package]\nname = \"demo_case\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
     )
     .expect("cargo toml");
-    fs::write(root.join("src/lib.rs"), "pub fn add(a: i32, b: i32) -> i32 { a + b }\n")
-        .expect("lib");
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn add(a: i32, b: i32) -> i32 { a + b }\n",
+    )
+    .expect("lib");
     fs::write(
         root.join("tests/failing_case.rs"),
         "use demo_case::add;\n#[test]\nfn fails_now() { assert_eq!(add(1, 1), 3); }\n",

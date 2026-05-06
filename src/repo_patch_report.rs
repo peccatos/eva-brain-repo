@@ -64,17 +64,11 @@ impl RepoPatchCliConfig {
                     machine_summary_path = value;
                 }
                 unknown if unknown.starts_with("--repo=") => {
-                    repo_url = Some(
-                        unknown
-                            .trim_start_matches("--repo=")
-                            .trim()
-                            .to_string(),
-                    );
+                    repo_url = Some(unknown.trim_start_matches("--repo=").trim().to_string());
                 }
                 unknown if unknown.starts_with("--branch=") => {
-                    branch = normalize_branch(Some(
-                        unknown.trim_start_matches("--branch=").to_string(),
-                    ));
+                    branch =
+                        normalize_branch(Some(unknown.trim_start_matches("--branch=").to_string()));
                 }
                 unknown if unknown.starts_with("--max-changed-files=") => {
                     max_changed_files = parse_max_changed_files(
@@ -265,7 +259,9 @@ pub fn run_repo_patch_report(config: &RepoPatchCliConfig) -> Result<RepoPatchExe
         .parent()
         .map(Path::to_path_buf)
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
-    let repo_root = workspace_root.join("repos").join(repo_slug(&config.repo_url));
+    let repo_root = workspace_root
+        .join("repos")
+        .join(repo_slug(&config.repo_url));
 
     let outcome = run_repo_patch_pipeline(config, &repo_root);
     write_report(&report_path, &outcome.report_markdown)?;
@@ -390,12 +386,22 @@ fn clone_and_analyze_repo(
 
 fn prepare_clone_directory(repo_root: &Path) -> Result<(), String> {
     if let Some(parent) = repo_root.parent() {
-        fs::create_dir_all(parent)
-            .map_err(|error| format!("failed to create clone root {}: {}", parent.display(), error))?;
+        fs::create_dir_all(parent).map_err(|error| {
+            format!(
+                "failed to create clone root {}: {}",
+                parent.display(),
+                error
+            )
+        })?;
     }
     if repo_root.exists() {
-        fs::remove_dir_all(repo_root)
-            .map_err(|error| format!("failed to reset clone dir {}: {}", repo_root.display(), error))?;
+        fs::remove_dir_all(repo_root).map_err(|error| {
+            format!(
+                "failed to reset clone dir {}: {}",
+                repo_root.display(),
+                error
+            )
+        })?;
     }
     Ok(())
 }
@@ -436,7 +442,8 @@ fn copy_directory_recursively(source: &Path, destination: &Path) -> Result<(), S
     for entry in fs::read_dir(source)
         .map_err(|error| format!("failed to read {}: {}", source.display(), error))?
     {
-        let entry = entry.map_err(|error| format!("failed to inspect {}: {}", source.display(), error))?;
+        let entry =
+            entry.map_err(|error| format!("failed to inspect {}: {}", source.display(), error))?;
         let path = entry.path();
         let name = entry.file_name();
         if name == OsStr::new(".git") {
@@ -446,8 +453,14 @@ fn copy_directory_recursively(source: &Path, destination: &Path) -> Result<(), S
         if path.is_dir() {
             copy_directory_recursively(&path, &target)?;
         } else {
-            fs::copy(&path, &target)
-                .map_err(|error| format!("failed to copy {} to {}: {}", path.display(), target.display(), error))?;
+            fs::copy(&path, &target).map_err(|error| {
+                format!(
+                    "failed to copy {} to {}: {}",
+                    path.display(),
+                    target.display(),
+                    error
+                )
+            })?;
         }
     }
 
@@ -470,7 +483,13 @@ fn analyze_repo(repo_root: &Path) -> Result<RepoAnalysis, String> {
     let gitignore_has_target = gitignore_has_target(repo_root)?;
     let has_rust_tests = has_rust_tests(repo_root)?;
     let top_level_items = fs::read_dir(repo_root)
-        .map_err(|error| format!("failed to read repo root {}: {}", repo_root.display(), error))?
+        .map_err(|error| {
+            format!(
+                "failed to read repo root {}: {}",
+                repo_root.display(),
+                error
+            )
+        })?
         .filter_map(|entry| entry.ok())
         .filter_map(|entry| entry.file_name().into_string().ok())
         .collect::<Vec<_>>();
@@ -512,7 +531,9 @@ fn has_rust_ci_workflow(repo_root: &Path) -> Result<bool, String> {
         if !matches!(extension, "yml" | "yaml") {
             continue;
         }
-        let contents = fs::read_to_string(&path).unwrap_or_default().to_ascii_lowercase();
+        let contents = fs::read_to_string(&path)
+            .unwrap_or_default()
+            .to_ascii_lowercase();
         if contents.contains("cargo check")
             || contents.contains("cargo test")
             || contents.contains("dtolnay/rust-toolchain")
@@ -532,12 +553,9 @@ fn gitignore_has_target(repo_root: &Path) -> Result<bool, String> {
     }
     let contents = fs::read_to_string(&path)
         .map_err(|error| format!("failed to read {}: {}", path.display(), error))?;
-    Ok(contents.lines().any(|line| {
-        matches!(
-            line.trim(),
-            "target" | "target/" | "/target" | "/target/"
-        )
-    }))
+    Ok(contents
+        .lines()
+        .any(|line| matches!(line.trim(), "target" | "target/" | "/target" | "/target/")))
 }
 
 fn has_rust_tests(repo_root: &Path) -> Result<bool, String> {
@@ -546,8 +564,13 @@ fn has_rust_tests(repo_root: &Path) -> Result<bool, String> {
         return Ok(false);
     }
 
-    let entries = fs::read_dir(&tests_root)
-        .map_err(|error| format!("failed to read tests dir {}: {}", tests_root.display(), error))?;
+    let entries = fs::read_dir(&tests_root).map_err(|error| {
+        format!(
+            "failed to read tests dir {}: {}",
+            tests_root.display(),
+            error
+        )
+    })?;
 
     for entry in entries.flatten() {
         let path = entry.path();
@@ -564,7 +587,10 @@ fn has_rust_tests(repo_root: &Path) -> Result<bool, String> {
     Ok(false)
 }
 
-fn build_patch_plan(analysis: &RepoAnalysis, max_changed_files: usize) -> Vec<RepoPatchFileSection> {
+fn build_patch_plan(
+    analysis: &RepoAnalysis,
+    max_changed_files: usize,
+) -> Vec<RepoPatchFileSection> {
     let mut plan = Vec::new();
 
     if !analysis.has_rust_ci_workflow {
@@ -582,12 +608,17 @@ fn build_patch_plan(analysis: &RepoAnalysis, max_changed_files: usize) -> Vec<Re
         plan.push(RepoPatchFileSection {
             path: ".gitignore".to_string(),
             language: "gitignore".to_string(),
-            change_type: if analysis.top_level_items.iter().any(|item| item == ".gitignore") {
+            change_type: if analysis
+                .top_level_items
+                .iter()
+                .any(|item| item == ".gitignore")
+            {
                 RepoChangeType::Update
             } else {
                 RepoChangeType::Create
             },
-            reason: "Исключён каталог target, чтобы build-артефакты не попадали в репозиторий.".to_string(),
+            reason: "Исключён каталог target, чтобы build-артефакты не попадали в репозиторий."
+                .to_string(),
             final_contents: rust_gitignore_block(),
             report_code: rust_gitignore_block(),
         });
@@ -628,7 +659,10 @@ fn apply_patch_plan(repo_root: &Path, plan: &[RepoPatchFileSection]) -> Result<(
 }
 
 fn validate_patch_plan(repo_root: &Path, plan: &[RepoPatchFileSection]) -> Result<(), String> {
-    if plan.iter().any(|section| section.path == "tests/eva_smoke.rs") {
+    if plan
+        .iter()
+        .any(|section| section.path == "tests/eva_smoke.rs")
+    {
         let output = Command::new("cargo")
             .args(["test", "--test", "eva_smoke", "--no-run"])
             .current_dir(repo_root)
@@ -761,8 +795,13 @@ fn ensure_trailing_newline(code: &str) -> String {
 
 fn write_report(path: &Path, contents: &str) -> Result<(), String> {
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)
-            .map_err(|error| format!("failed to create report dir {}: {}", parent.display(), error))?;
+        fs::create_dir_all(parent).map_err(|error| {
+            format!(
+                "failed to create report dir {}: {}",
+                parent.display(),
+                error
+            )
+        })?;
     }
     fs::write(path, contents)
         .map_err(|error| format!("failed to write report {}: {}", path.display(), error))
@@ -841,4 +880,3 @@ fn repo_slug(repo_url: &str) -> String {
     }
     slug.trim_matches('_').to_string()
 }
-

@@ -52,5 +52,9 @@ pub struct GithubSearchFixture {
     pub items: Vec<GithubRepositorySummary>,
 }
 
-fn default_target_repo_size_kb() -> u64 { 3_000 }
-fn default_true() -> bool { true }
+fn default_target_repo_size_kb() -> u64 {
+    3_000
+}
+fn default_true() -> bool {
+    true
+}

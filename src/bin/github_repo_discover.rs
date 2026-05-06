@@ -13,7 +13,10 @@ fn main() {
         match args[index].as_str() {
             "--config" => {
                 index += 1;
-                config_path = args.get(index).cloned().unwrap_or_else(|| config_path.clone());
+                config_path = args
+                    .get(index)
+                    .cloned()
+                    .unwrap_or_else(|| config_path.clone());
             }
             "--fixture" => {
                 index += 1;
@@ -29,7 +32,10 @@ fn main() {
 
     let result = run(&config_path, fixture_path.as_deref());
     match result {
-        Ok(summary) => println!("{}", serde_json::to_string_pretty(&summary).expect("serialize summary")),
+        Ok(summary) => println!(
+            "{}",
+            serde_json::to_string_pretty(&summary).expect("serialize summary")
+        ),
         Err(error) => {
             eprintln!("{error}");
             std::process::exit(1);

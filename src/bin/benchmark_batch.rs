@@ -16,7 +16,10 @@ fn main() {
 
     let result = run(&manifest_path, &output_path, limit);
     match result {
-        Ok(report) => println!("{}", serde_json::to_string_pretty(&report.aggregate).expect("serialize aggregate")),
+        Ok(report) => println!(
+            "{}",
+            serde_json::to_string_pretty(&report.aggregate).expect("serialize aggregate")
+        ),
         Err(error) => {
             eprintln!("{error}");
             std::process::exit(1);
@@ -24,7 +27,11 @@ fn main() {
     }
 }
 
-fn run(manifest_path: &str, output_path: &str, limit: Option<usize>) -> Result<BenchmarkBatchReport, String> {
+fn run(
+    manifest_path: &str,
+    output_path: &str,
+    limit: Option<usize>,
+) -> Result<BenchmarkBatchReport, String> {
     let manifest = BenchmarkCaseLoader::load_manifest(manifest_path)?;
     let report = BenchmarkRunner::default().run_manifest(&manifest, limit)?;
     report.write_to_path(output_path)?;

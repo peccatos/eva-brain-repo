@@ -11,7 +11,9 @@ pub struct ToolExecutor {
 
 impl Default for ToolExecutor {
     fn default() -> Self {
-        Self { output_limit: 16_384 }
+        Self {
+            output_limit: 16_384,
+        }
     }
 }
 
@@ -24,8 +26,9 @@ impl ToolExecutor {
         match request {
             ToolRequest::WriteFile { path, contents } => {
                 if let Some(parent) = path.parent() {
-                    fs::create_dir_all(parent)
-                        .map_err(|error| format!("failed to create {}: {}", parent.display(), error))?;
+                    fs::create_dir_all(parent).map_err(|error| {
+                        format!("failed to create {}: {}", parent.display(), error)
+                    })?;
                 }
                 fs::write(&path, contents.as_bytes())
                     .map_err(|error| format!("failed to write {}: {}", path.display(), error))?;
@@ -36,8 +39,9 @@ impl ToolExecutor {
             ToolRequest::RemoveFile { path } => {
                 let existed = path.exists();
                 if existed {
-                    fs::remove_file(&path)
-                        .map_err(|error| format!("failed to remove {}: {}", path.display(), error))?;
+                    fs::remove_file(&path).map_err(|error| {
+                        format!("failed to remove {}: {}", path.display(), error)
+                    })?;
                 }
                 Ok(ToolResponse::Remove { existed })
             }

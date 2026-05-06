@@ -3,8 +3,7 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 
-use reqwest::blocking::Client;
-use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, USER_AGENT};
+#[cfg(feature = "github-online")]
 use serde::Deserialize;
 
 use crate::{
@@ -25,10 +24,9 @@ pub struct DiscoveredRepository {
 }
 
 #[derive(Debug, Clone)]
-pub struct GithubToolExecutor {
-    client: Client,
-}
+pub struct GithubToolExecutor;
 
+#[cfg(feature = "github-online")]
 #[derive(Debug, Deserialize)]
 struct GithubSearchResponse {
     items: Vec<GithubRepositorySummary>,
@@ -36,23 +34,7 @@ struct GithubSearchResponse {
 
 impl GithubToolExecutor {
     pub fn new() -> Self {
-        let mut headers = HeaderMap::new();
-        headers.insert(USER_AGENT, HeaderValue::from_static("eva-brain-repo/0.1"));
-        if let Ok(token) = std::env::var("GITHUB_TOKEN") {
-            let value = token.trim();
-            if !value.is_empty() {
-                if let Ok(header) = HeaderValue::from_str(&format!("Bearer {value}")) {
-                    headers.insert(AUTHORIZATION, header);
-                }
-            }
-        }
-
-        let client = Client::builder()
-            .default_headers(headers)
-            .build()
-            .expect("github client must build");
-
-        Self { client }
+        Self
     }
 
     pub fn search_repositories(
@@ -63,8 +45,10 @@ impl GithubToolExecutor {
         let items = if let Some(path) = fixture_path {
             let contents = fs::read_to_string(path)
                 .map_err(|error| format!("failed to read fixture {}: {}", path.display(), error))?;
-            let fixture: GithubSearchFixture = serde_json::from_str(&contents)
-                .map_err(|error| format!("failed to parse fixture {}: {}", path.display(), error))?;
+            let fixture: GithubSearchFixture =
+                serde_json::from_str(&contents).map_err(|error| {
+                    format!("failed to parse fixture {}: {}", path.display(), error)
+                })?;
             fixture.items
         } else {
             self.fetch_repositories(config)?
@@ -91,10 +75,7 @@ impl GithubToolExecutor {
                 source_type: "github_search".to_string(),
                 source_reference: "repository_discovery".to_string(),
                 goal: format!("подготовить benchmark-кейс для {}", repo.full_name),
-                local_repo_path: format!(
-                    "benchmarks/repos/{}",
-                    repo.full_name.replace('/', "_")
-                ),
+                local_repo_path: format!("benchmarks/repos/{}", repo.full_name.replace('/', "_")),
                 failure_type: "unknown".to_string(),
                 initial_failure_observed: false,
                 reproduction_notes: repo.description.clone(),
@@ -107,33 +88,65 @@ impl GithubToolExecutor {
         RepositoryDiscoveryManifest { cases }
     }
 
-    fn fetch_repositories(&self, config: &DiscoveryConfig) -> Result<Vec<GithubRepositorySummary>, String> {
-        let query = format!(
-            "{} language:{} stars:>={}",
-            config.query, config.language, config.min_stars
-        );
-        let response = self
-            .client
-            .get("https://api.github.com/search/repositories")
-            .query(&[
-                ("q", query.as_str()),
-                ("sort", "stars"),
-                ("order", "desc"),
-                ("per_page", &config.max_results.to_string()),
-            ])
-            .send()
-            .map_err(|error| format!("github search failed: {}", error))?;
-
-        if !response.status().is_success() {
-            let status = response.status();
-            let body = response.text().unwrap_or_default();
-            return Err(format!("github search failed: {} {}", status, body));
+    fn fetch_repositories(
+        &self,
+        config: &DiscoveryConfig,
+    ) -> Result<Vec<GithubRepositorySummary>, String> {
+        #[cfg(not(feature = "github-online"))]
+        {
+            let _ = config;
+            return Err(
+                "online GitHub discovery requires --features github-online or --fixture"
+                    .to_string(),
+            );
         }
 
-        let parsed: GithubSearchResponse = response
-            .json()
-            .map_err(|error| format!("failed to parse github response: {}", error))?;
-        Ok(parsed.items)
+        #[cfg(feature = "github-online")]
+        {
+            use reqwest::blocking::Client;
+            use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, USER_AGENT};
+
+            let mut headers = HeaderMap::new();
+            headers.insert(USER_AGENT, HeaderValue::from_static("eva-brain-repo/0.1"));
+            if let Ok(token) = std::env::var("GITHUB_TOKEN") {
+                let value = token.trim();
+                if !value.is_empty() {
+                    if let Ok(header) = HeaderValue::from_str(&format!("Bearer {value}")) {
+                        headers.insert(AUTHORIZATION, header);
+                    }
+                }
+            }
+
+            let client = Client::builder()
+                .default_headers(headers)
+                .build()
+                .map_err(|error| format!("failed to build github client: {error}"))?;
+            let query = format!(
+                "{} language:{} stars:>={}",
+                config.query, config.language, config.min_stars
+            );
+            let response = client
+                .get("https://api.github.com/search/repositories")
+                .query(&[
+                    ("q", query.as_str()),
+                    ("sort", "stars"),
+                    ("order", "desc"),
+                    ("per_page", &config.max_results.to_string()),
+                ])
+                .send()
+                .map_err(|error| format!("github search failed: {}", error))?;
+
+            if !response.status().is_success() {
+                let status = response.status();
+                let body = response.text().unwrap_or_default();
+                return Err(format!("github search failed: {} {}", status, body));
+            }
+
+            let parsed: GithubSearchResponse = response
+                .json()
+                .map_err(|error| format!("failed to parse github response: {}", error))?;
+            Ok(parsed.items)
+        }
     }
 }
 
@@ -208,7 +221,10 @@ fn heuristic_has_tests_or_ci(repo: &GithubRepositorySummary) -> bool {
     let haystack = format!(
         "{} {}",
         repo.full_name.to_ascii_lowercase(),
-        repo.description.clone().unwrap_or_default().to_ascii_lowercase()
+        repo.description
+            .clone()
+            .unwrap_or_default()
+            .to_ascii_lowercase()
     );
     haystack.contains("test")
         || haystack.contains("ci")

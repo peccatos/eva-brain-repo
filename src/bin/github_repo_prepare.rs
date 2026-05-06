@@ -1,9 +1,8 @@
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::time::Instant;
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use eva_runtime_with_task_validator::{
     BenchmarkCaseManifest, BenchmarkFailureType, BenchmarkSourceType, RustBugfixCase,
@@ -134,13 +133,9 @@ fn run(
     ready_output_path: &Path,
 ) -> Result<PreparedAggregate, String> {
     let manifest = load_manifest(input_path)?;
-    let prepared_cases = manifest
-        .cases
-        .iter()
-        .map(prepare_case)
-        .collect::<Vec<_>>();
+    let prepared_cases = manifest.cases.iter().map(prepare_case).collect::<Vec<_>>();
     let prepared_manifest = PreparedManifest {
-        generated_at: Utc::now().to_rfc3339(),
+        generated_at: unix_timestamp_string(),
         source_manifest: input_path.display().to_string(),
         aggregate: aggregate_from_cases(&prepared_cases),
         cases: prepared_cases.clone(),
@@ -153,17 +148,40 @@ fn run(
     Ok(prepared_manifest.aggregate)
 }
 
+fn unix_timestamp_string() -> String {
+    let seconds = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_secs())
+        .unwrap_or(0);
+    format!("unix:{seconds}")
+}
+
 fn load_manifest(path: &Path) -> Result<DiscoveryManifest, String> {
-    let content = fs::read_to_string(path)
-        .map_err(|error| format!("failed to read discovery manifest {}: {}", path.display(), error))?;
-    serde_json::from_str(&content)
-        .map_err(|error| format!("failed to parse discovery manifest {}: {}", path.display(), error))
+    let content = fs::read_to_string(path).map_err(|error| {
+        format!(
+            "failed to read discovery manifest {}: {}",
+            path.display(),
+            error
+        )
+    })?;
+    serde_json::from_str(&content).map_err(|error| {
+        format!(
+            "failed to parse discovery manifest {}: {}",
+            path.display(),
+            error
+        )
+    })
 }
 
 fn write_json<T: Serialize>(path: &Path, value: &T) -> Result<(), String> {
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)
-            .map_err(|error| format!("failed to create parent dir {}: {}", parent.display(), error))?;
+        fs::create_dir_all(parent).map_err(|error| {
+            format!(
+                "failed to create parent dir {}: {}",
+                parent.display(),
+                error
+            )
+        })?;
     }
     let content = serde_json::to_string_pretty(value)
         .map_err(|error| format!("failed to serialize {}: {}", path.display(), error))?;
@@ -176,7 +194,11 @@ fn prepare_case(discovery: &DiscoveryCase) -> PreparedCase {
     let mut preparation_error = None;
     let mut workspace_prepared = false;
 
-    if let Err(error) = ensure_workspace(&workspace_root, &discovery.repo_url, &discovery.default_branch) {
+    if let Err(error) = ensure_workspace(
+        &workspace_root,
+        &discovery.repo_url,
+        &discovery.default_branch,
+    ) {
         preparation_error = Some(error);
     } else {
         workspace_prepared = true;
@@ -274,7 +296,11 @@ fn prepare_case(discovery: &DiscoveryCase) -> PreparedCase {
     }
 }
 
-fn ensure_workspace(workspace_root: &Path, repo_url: &str, default_branch: &str) -> Result<(), String> {
+fn ensure_workspace(
+    workspace_root: &Path,
+    repo_url: &str,
+    default_branch: &str,
+) -> Result<(), String> {
     if workspace_root.exists() {
         if workspace_root.join(".git").exists() || workspace_root.join("Cargo.toml").exists() {
             return Ok(());
@@ -293,8 +319,13 @@ fn ensure_workspace(workspace_root: &Path, repo_url: &str, default_branch: &str)
     }
 
     if let Some(parent) = workspace_root.parent() {
-        fs::create_dir_all(parent)
-            .map_err(|error| format!("failed to create parent dir {}: {}", parent.display(), error))?;
+        fs::create_dir_all(parent).map_err(|error| {
+            format!(
+                "failed to create parent dir {}: {}",
+                parent.display(),
+                error
+            )
+        })?;
     }
 
     let status = Command::new("git")
@@ -318,14 +349,21 @@ fn ensure_workspace(workspace_root: &Path, repo_url: &str, default_branch: &str)
 }
 
 fn locked_cargo_args(workspace_root: &Path, base: &[&str]) -> Vec<String> {
-    let mut args = base.iter().map(|value| (*value).to_string()).collect::<Vec<_>>();
+    let mut args = base
+        .iter()
+        .map(|value| (*value).to_string())
+        .collect::<Vec<_>>();
     if workspace_root.join("Cargo.lock").exists() {
         args.insert(1, "--locked".to_string());
     }
     args
 }
 
-fn run_cargo_command(workspace_root: &Path, command_name: &str, args: &[String]) -> CommandRunRecord {
+fn run_cargo_command(
+    workspace_root: &Path,
+    command_name: &str,
+    args: &[String],
+) -> CommandRunRecord {
     let started = Instant::now();
     let mut command = Command::new("cargo");
     command
@@ -341,7 +379,12 @@ fn run_cargo_command(workspace_root: &Path, command_name: &str, args: &[String])
         Ok(output) => {
             let stdout = truncate_utf8(&output.stdout, COMMAND_OUTPUT_LIMIT);
             let stderr = truncate_utf8(&output.stderr, COMMAND_OUTPUT_LIMIT);
-            let status = if output.status.success() { "ok" } else { "error" }.to_string();
+            let status = if output.status.success() {
+                "ok"
+            } else {
+                "error"
+            }
+            .to_string();
             CommandRunRecord {
                 command: format!("cargo {}", command_name),
                 status,
@@ -405,9 +448,21 @@ fn build_reproduction_notes(
     let mut notes = Vec::new();
     notes.push(format!("workspace_prepared={workspace_prepared}"));
     notes.push(format!("cargo_toml_present={cargo_toml_present}"));
-    notes.push(format!("cargo_metadata={}:{}", cargo_metadata.status, cargo_metadata.exit_code.unwrap_or(-1)));
-    notes.push(format!("cargo_check={}:{}", cargo_check.status, cargo_check.exit_code.unwrap_or(-1)));
-    notes.push(format!("cargo_test={}:{}", cargo_test.status, cargo_test.exit_code.unwrap_or(-1)));
+    notes.push(format!(
+        "cargo_metadata={}:{}",
+        cargo_metadata.status,
+        cargo_metadata.exit_code.unwrap_or(-1)
+    ));
+    notes.push(format!(
+        "cargo_check={}:{}",
+        cargo_check.status,
+        cargo_check.exit_code.unwrap_or(-1)
+    ));
+    notes.push(format!(
+        "cargo_test={}:{}",
+        cargo_test.status,
+        cargo_test.exit_code.unwrap_or(-1)
+    ));
     if let Some(error) = preparation_error {
         notes.push(format!("preparation_error={error}"));
     }
@@ -538,9 +593,13 @@ mod tests {
             discovery: discovery_case(),
         };
 
-        let ready = build_ready_manifest(&[prepared], Path::new("benchmarks/rust_cases_ready.json"));
+        let ready =
+            build_ready_manifest(&[prepared], Path::new("benchmarks/rust_cases_ready.json"));
         assert_eq!(ready.cases.len(), 1);
-        assert!(matches!(ready.cases[0].source_type, BenchmarkSourceType::CompileFailure));
+        assert!(matches!(
+            ready.cases[0].source_type,
+            BenchmarkSourceType::CompileFailure
+        ));
     }
 
     #[test]
@@ -560,8 +619,8 @@ mod tests {
             reproduction_notes: None,
         };
 
-        let ready = build_ready_manifest(&[prepared], Path::new("benchmarks/rust_cases_ready.json"));
+        let ready =
+            build_ready_manifest(&[prepared], Path::new("benchmarks/rust_cases_ready.json"));
         assert!(ready.cases.is_empty());
     }
 }
-

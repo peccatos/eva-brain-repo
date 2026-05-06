@@ -56,15 +56,15 @@ impl BenchmarkAggregateMetrics {
             .iter()
             .filter(|case| case.mutations_attempted > 0)
             .count() as u64;
-        let github_cases = cases
-            .iter()
-            .filter(|case| case.github_context_used)
-            .count() as u64;
+        let github_cases = cases.iter().filter(|case| case.github_context_used).count() as u64;
         let learning_cases = cases
             .iter()
             .filter(|case| case.learning_bias_applied)
             .count() as u64;
-        let avg_files_touched = cases.iter().map(|case| case.files_touched as f32).sum::<f32>()
+        let avg_files_touched = cases
+            .iter()
+            .map(|case| case.files_touched as f32)
+            .sum::<f32>()
             / total_cases as f32;
         let prediction_values = cases
             .iter()

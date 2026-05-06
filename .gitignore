@@ -1,4 +1,5 @@
 /target/
+/.codex
 /eva_output/
 /benchmarks/repos/
 *.log
@@ -10,3 +11,23 @@ Thumbs.db
 /fixtures/*_batch_report.json
 /fixtures/*_discovery_manifest.json
 /fixtures/*_fixture/
+
+# EVA runtime state
+memory/benchmarks/
+memory/campaigns/
+memory/candidates/
+memory/evolution.jsonl
+memory/graph.json
+memory/metrics.json
+memory/mutation_dedup.json
+memory/patterns/
+memory/regressions.json
+memory/replays/
+memory/reports/
+memory/reviews/
+memory/success_patterns.json
+memory/tasks/
+memory/portfolio.json
+
+# keep optional memory root placeholder
+!memory/.gitkeep

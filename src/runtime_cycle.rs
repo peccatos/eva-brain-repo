@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{BenchmarkBatchReport, DEFAULT_BATCH_REPORT_PATH, ProjectPhaseRuntimeOutput};
+use crate::{BenchmarkBatchReport, ProjectPhaseRuntimeOutput, DEFAULT_BATCH_REPORT_PATH};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CycleInput {
@@ -38,11 +38,13 @@ impl RuntimeCycleRunner {
         let benchmark = BenchmarkBatchReport::load_from_path(DEFAULT_BATCH_REPORT_PATH)
             .ok()
             .map(|report| report.aggregate);
-        let prediction_error = (((input.goal.len() + input.external_state.len()) % 37) as f32 / 37.0)
-            .max(0.12);
+        let prediction_error =
+            (((input.goal.len() + input.external_state.len()) % 37) as f32 / 37.0).max(0.12);
         let mutations_attempted = benchmark
             .as_ref()
-            .map(|aggregate| (aggregate.mutation_attempt_rate * aggregate.total_cases as f32).round() as u64)
+            .map(|aggregate| {
+                (aggregate.mutation_attempt_rate * aggregate.total_cases as f32).round() as u64
+            })
             .unwrap_or(0);
         let files_touched = benchmark
             .as_ref()
@@ -50,7 +52,9 @@ impl RuntimeCycleRunner {
             .unwrap_or(0);
         let rollback_count = benchmark
             .as_ref()
-            .map(|aggregate| (aggregate.rollback_rate * aggregate.total_cases as f32).round() as u64)
+            .map(|aggregate| {
+                (aggregate.rollback_rate * aggregate.total_cases as f32).round() as u64
+            })
             .unwrap_or(0);
 
         Ok(RuntimeCycleReport {

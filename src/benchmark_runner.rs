@@ -159,7 +159,11 @@ fn validate_probe(
         })?,
         _ => tool_executor.run(ToolRequest::CargoTest {
             workdir: workspace.to_path_buf(),
-            args: vec!["--test".to_string(), "eva_benchmark_probe".to_string(), "--no-run".to_string()],
+            args: vec![
+                "--test".to_string(),
+                "eva_benchmark_probe".to_string(),
+                "--no-run".to_string(),
+            ],
         })?,
     };
 

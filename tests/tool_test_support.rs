@@ -18,10 +18,16 @@ pub fn unique_tool_root(name: &str) -> PathBuf {
 pub fn init_tool_workspace(name: &str) -> PathBuf {
     let root = unique_tool_root(name);
     fs::create_dir_all(&root).expect("root dir");
-    fs::write(root.join("tool_registry.json"), include_str!("../tool_registry.json"))
-        .expect("registry");
-    fs::write(root.join("tool_policy.json"), include_str!("../tool_policy.json"))
-        .expect("policy");
+    fs::write(
+        root.join("tool_registry.json"),
+        include_str!("../tool_registry.json"),
+    )
+    .expect("registry");
+    fs::write(
+        root.join("tool_policy.json"),
+        include_str!("../tool_policy.json"),
+    )
+    .expect("policy");
     root
 }
 
@@ -71,4 +77,3 @@ fn run_git(root: &PathBuf, args: &[&str]) {
         .expect("git command");
     assert!(status.success(), "git {:?} failed", args);
 }
-
