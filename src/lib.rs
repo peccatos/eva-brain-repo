@@ -35,13 +35,15 @@ pub use contracts::{
 pub use evolution::{
     apply_mutation, autonomy_status, count_sandbox_leaks, distill_patterns, generate_from_plan,
     generate_from_recombined_hypothesis, generate_safe_mutation, learning_summary, load_metrics,
-    load_recombined_hypotheses, load_report_json, print_benchmark, print_campaign,
-    print_last_campaign_report, print_last_report, print_report, rank_plans, record_evolution,
-    refresh_metrics, refresh_report, render_recombined_hypotheses, run_benchmark,
-    run_planned_cycles, run_stored_campaign, run_task_from_path, score_cycle,
-    top_recombined_hypothesis, update_metrics_after_log, validate_mutation, validate_task_contract,
-    write_report, AutonomyStatus, DistilledPatternSummary, EvolutionBenchmark, EvolutionCampaign,
-    EvolutionHypothesis, EvolutionMetrics, EvolutionScore, LearningContext,
+    load_portfolio, load_recombined_hypotheses, load_report_json, normalized_generated_test_name,
+    print_benchmark, print_campaign, print_last_campaign_report, print_last_report,
+    print_portfolio, print_report, rank_plans, record_evolution, refresh_metrics, refresh_report,
+    render_recombined_hypotheses, run_benchmark, run_planned_cycles, run_stored_campaign,
+    run_task_from_path, score_cycle, top_recombined_hypothesis, update_metrics_after_log,
+    update_portfolio_after_log, update_portfolio_after_replay, validate_mutation,
+    validate_task_contract, write_report, AutonomyStatus, DistilledPatternSummary,
+    EvolutionBenchmark, EvolutionCampaign, EvolutionHypothesis, EvolutionMetrics, EvolutionScore,
+    LearningContext, MutationPortfolio, MutationPortfolioEntry,
 };
 pub use github_tool_contract::{DiscoveryConfig, GithubRepositorySummary, GithubSearchFixture};
 pub use github_tool_executor::GithubToolExecutor;

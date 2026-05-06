@@ -9,7 +9,12 @@ pub struct RecombinedHypothesis {
     pub suggested_mutation_kind: String,
     pub suggested_target: String,
     pub reason_ru: String,
+    pub portfolio_reason_ru: String,
     pub expected_gain: f32,
     pub estimated_risk: f32,
     pub confidence: f32,
+    pub diversity_bonus: f32,
+    pub saturation_penalty: f32,
+    pub repeated_target_penalty: f32,
+    pub final_recombination_score: f32,
 }

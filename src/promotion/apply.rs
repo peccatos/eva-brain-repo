@@ -1,7 +1,10 @@
 use std::process::Command;
 
 use crate::contracts::SandboxResult;
-use crate::evolution::{dedup, memory, mutator, refresh_report, scorer};
+use crate::evolution::{
+    dedup, memory, mutator, refresh_report, scorer, update_portfolio_after_log,
+    update_portfolio_after_replay,
+};
 use crate::promotion::gate::check_promotion_gate;
 use crate::promotion::review::review_candidate;
 use crate::sandbox::{manager, runner, snapshot};
@@ -109,6 +112,7 @@ pub fn replay_candidate(project_root: &str, memory_root: &str, run_id: &str) -> 
     };
     crate::evolution::metrics::update_metrics_after_replay(memory_root, &replay)?;
     memory::store_replay_result(memory_root, run_id, &replay)?;
+    update_portfolio_after_replay(memory_root, mutation.kind, &replay)?;
     refresh_report(memory_root, run_id)?;
     Ok(())
 }
@@ -166,6 +170,7 @@ pub fn promote_candidate(
         &entry,
     )?;
     crate::evolution::metrics::update_metrics_after_log(memory_root, &entry)?;
+    update_portfolio_after_log(memory_root, &entry)?;
     Ok(())
 }
 

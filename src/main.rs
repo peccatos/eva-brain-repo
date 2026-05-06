@@ -1,9 +1,9 @@
 use eva_runtime_with_task_validator::{
     autonomy_status, build_project_phase_runtime_output, candidate_diff, distill_patterns,
     ingest_repo_patterns, learning_summary, list_candidates, load_metrics, print_benchmark,
-    print_campaign, print_last_campaign_report, print_last_report, print_report, promote_candidate,
-    refresh_metrics, refresh_report, render_plans, render_recombined_hypotheses, replay_candidate,
-    review_candidate, run_benchmark, run_evolution_cycle, run_planned_cycles,
+    print_campaign, print_last_campaign_report, print_last_report, print_portfolio, print_report,
+    promote_candidate, refresh_metrics, refresh_report, render_plans, render_recombined_hypotheses,
+    replay_candidate, review_candidate, run_benchmark, run_evolution_cycle, run_planned_cycles,
     run_planned_evolution_cycle, run_recombined_evolution_cycle, run_repo_patch_report,
     run_stored_campaign, run_task_from_path, serve_runtime_daemon, should_run_repo_patch_mode,
     CycleInput, RepoPatchCliConfig, RuntimeCliCommand, RuntimeCycleRunner, RUNTIME_CLI_HELP,
@@ -122,6 +122,16 @@ fn main() {
                 ),
                 Err(err) => {
                     eprintln!("metrics_refresh_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::Portfolio) => {
+            match print_portfolio("memory") {
+                Ok(summary) => println!("{summary}"),
+                Err(err) => {
+                    eprintln!("portfolio_error: {err}");
                     std::process::exit(1);
                 }
             }

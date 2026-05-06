@@ -47,6 +47,9 @@ pub const RUNTIME_CLI_HELP: &str = r#"EVA runtime commands:
   cargo run -- --metrics-refresh
       Recompute compact evolution metrics from logs and memory files.
 
+  cargo run -- --portfolio
+      Print mutation portfolio summary with saturation state.
+
   cargo run -- --learning-summary
       Print compact learning memory summary.
 
@@ -123,6 +126,7 @@ pub enum RuntimeCliCommand {
     AutonomyStatus,
     Metrics,
     MetricsRefresh,
+    Portfolio,
     LearningSummary,
     LastReport,
     Report(String),
@@ -249,6 +253,9 @@ impl RuntimeCliCommand {
         }
         if raw_args == ["--metrics-refresh"] {
             return Ok(Self::MetricsRefresh);
+        }
+        if raw_args == ["--portfolio"] {
+            return Ok(Self::Portfolio);
         }
         if raw_args == ["--learning-summary"] {
             return Ok(Self::LearningSummary);

@@ -87,6 +87,11 @@ fn build_report(
         source_patterns: entry.recombined_source_patterns.clone(),
         avoided_risks: entry.recombined_avoided_risks.clone(),
         recombination_reason_ru: entry.recombination_reason_ru.clone(),
+        portfolio_reason_ru: entry.portfolio_reason_ru.clone(),
+        diversity_bonus: entry.diversity_bonus,
+        saturation_penalty: entry.saturation_penalty,
+        repeated_target_penalty: entry.repeated_target_penalty,
+        final_recombination_score: entry.final_recombination_score,
         sandbox_ru: sandbox_ru(entry),
         checks_ru: checks_ru(entry),
         score_ru: score_ru(entry),
@@ -103,11 +108,12 @@ fn render_markdown(report: &EvolutionReport) -> String {
     let recombination_block = if report.source_patterns.is_empty()
         && report.avoided_risks.is_empty()
         && report.recombination_reason_ru.is_none()
+        && report.portfolio_reason_ru.is_none()
     {
         String::new()
     } else {
         format!(
-            "\n## Рекомбинация\nГипотеза: {}\nSource patterns: {}\nAvoided risks: {}\nПричина: {}\n",
+            "\n## Рекомбинация\nГипотеза: {}\nSource patterns: {}\nAvoided risks: {}\nПричина: {}\nPortfolio reason: {}\nDiversity bonus: {:.2}\nSaturation penalty: {:.2}\nRepeated target penalty: {:.2}\nFinal recombination score: {:.2}\n",
             report.hypothesis_id.as_deref().unwrap_or("нет"),
             if report.source_patterns.is_empty() {
                 "(none)".to_string()
@@ -122,7 +128,12 @@ fn render_markdown(report: &EvolutionReport) -> String {
             report
                 .recombination_reason_ru
                 .as_deref()
-                .unwrap_or("нет")
+                .unwrap_or("нет"),
+            report.portfolio_reason_ru.as_deref().unwrap_or("нет"),
+            report.diversity_bonus,
+            report.saturation_penalty,
+            report.repeated_target_penalty,
+            report.final_recombination_score
         )
     };
     format!(
@@ -184,6 +195,11 @@ fn load_candidate_entry(
         recombined_source_patterns: Vec::new(),
         recombined_avoided_risks: Vec::new(),
         recombination_reason_ru: None,
+        portfolio_reason_ru: None,
+        diversity_bonus: 0.0,
+        saturation_penalty: 0.0,
+        repeated_target_penalty: 0.0,
+        final_recombination_score: 0.0,
         mutation_id: summary.mutation_id.clone(),
         mutation_digest: summary.mutation_digest.clone(),
         status: summary.status,

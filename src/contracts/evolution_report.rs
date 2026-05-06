@@ -19,6 +19,16 @@ pub struct EvolutionReport {
     pub avoided_risks: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub recombination_reason_ru: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub portfolio_reason_ru: Option<String>,
+    #[serde(default)]
+    pub diversity_bonus: f32,
+    #[serde(default)]
+    pub saturation_penalty: f32,
+    #[serde(default)]
+    pub repeated_target_penalty: f32,
+    #[serde(default)]
+    pub final_recombination_score: f32,
     pub sandbox_ru: String,
     pub checks_ru: String,
     pub score_ru: String,

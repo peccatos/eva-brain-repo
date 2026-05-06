@@ -7,6 +7,7 @@ pub mod hypothesis;
 pub mod learning_context;
 pub mod memory;
 pub mod metrics;
+pub mod mutation_portfolio;
 pub mod mutator;
 pub mod patterns;
 pub mod recombination;
@@ -40,6 +41,11 @@ pub use memory::{record_evolution, CandidateSummary, ReplayResult};
 pub use metrics::{
     learning_summary, load_metrics, refresh_metrics, update_metrics_after_log, EvolutionMetrics,
 };
+pub use mutation_portfolio::{
+    kind_label as portfolio_kind_label, load_portfolio, print_portfolio,
+    update_portfolio_after_log, update_portfolio_after_replay, MutationPortfolio,
+    MutationPortfolioEntry,
+};
 pub use mutator::apply_mutation;
 pub use patterns::{distill_patterns, DistilledPatternSummary};
 pub use recombination::{
@@ -56,4 +62,5 @@ pub use task_validator::{
     load_stored_task_contract, load_task_contract, matches_target_patterns, store_task_contract,
     validate_task_contract,
 };
+pub use templates::normalized_generated_test_name;
 pub use validator::validate_mutation;

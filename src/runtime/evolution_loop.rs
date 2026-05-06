@@ -4,7 +4,8 @@ use crate::contracts::{
 };
 use crate::evolution::{
     dedup, generator, memory, metrics, mutator, recombination, regression_memory, scorer,
-    success_memory, validator, write_report, EvolutionScore, LearningContext,
+    success_memory, update_portfolio_after_log, validator, write_report, EvolutionScore,
+    LearningContext,
 };
 use crate::sandbox::{manager, runner, snapshot};
 
@@ -19,6 +20,11 @@ struct PlanContext {
     recombined_source_patterns: Vec<String>,
     recombined_avoided_risks: Vec<String>,
     recombination_reason_ru: Option<String>,
+    portfolio_reason_ru: Option<String>,
+    diversity_bonus: f32,
+    saturation_penalty: f32,
+    repeated_target_penalty: f32,
+    final_recombination_score: f32,
 }
 
 pub fn run_evolution_cycle(project_root: &str) -> Result<(), String> {
@@ -82,6 +88,11 @@ pub fn run_planned_evolution_cycle_for_task(
             recombined_source_patterns: Vec::new(),
             recombined_avoided_risks: Vec::new(),
             recombination_reason_ru: None,
+            portfolio_reason_ru: None,
+            diversity_bonus: 0.0,
+            saturation_penalty: 0.0,
+            repeated_target_penalty: 0.0,
+            final_recombination_score: 0.0,
         }),
     )
 }
@@ -171,6 +182,7 @@ fn run_evolution_cycle_with_mutation(
             &run_id,
         )?;
         metrics::update_metrics_after_log(memory_root, &final_entry)?;
+        update_portfolio_after_log(memory_root, &final_entry)?;
         return Err("duplicate bad mutation rejected before sandbox".to_string());
     }
 
@@ -251,6 +263,7 @@ fn run_evolution_cycle_with_mutation(
         write_report(memory_root, &entry, mutation)?;
         crate::graph::update_graph_for_evolution(memory_root, &entry)?;
         metrics::update_metrics_after_log(memory_root, &entry)?;
+        update_portfolio_after_log(memory_root, &entry)?;
     }
 
     match (result, cleanup) {
@@ -352,6 +365,11 @@ fn with_recombination_context(
         entry.recombined_source_patterns = context.recombined_source_patterns.clone();
         entry.recombined_avoided_risks = context.recombined_avoided_risks.clone();
         entry.recombination_reason_ru = context.recombination_reason_ru.clone();
+        entry.portfolio_reason_ru = context.portfolio_reason_ru.clone();
+        entry.diversity_bonus = context.diversity_bonus;
+        entry.saturation_penalty = context.saturation_penalty;
+        entry.repeated_target_penalty = context.repeated_target_penalty;
+        entry.final_recombination_score = context.final_recombination_score;
     }
     entry
 }
@@ -376,5 +394,10 @@ fn recombined_plan_context(hypothesis: &RecombinedHypothesis) -> PlanContext {
         recombined_source_patterns: hypothesis.source_patterns.clone(),
         recombined_avoided_risks: hypothesis.avoided_risks.clone(),
         recombination_reason_ru: Some(hypothesis.reason_ru.clone()),
+        portfolio_reason_ru: Some(hypothesis.portfolio_reason_ru.clone()),
+        diversity_bonus: hypothesis.diversity_bonus,
+        saturation_penalty: hypothesis.saturation_penalty,
+        repeated_target_penalty: hypothesis.repeated_target_penalty,
+        final_recombination_score: hypothesis.final_recombination_score,
     }
 }

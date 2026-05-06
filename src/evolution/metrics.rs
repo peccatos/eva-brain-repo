@@ -123,12 +123,13 @@ pub fn learning_summary(memory_root: &str) -> Result<String, String> {
     let successful = top_success_files(&successes);
 
     Ok(format!(
-        "total regression patterns: {}\ntotal success patterns: {}\nmutation dedup count: {}\ntop risky files: {}\ntop successful files: {}",
+        "total regression patterns: {}\ntotal success patterns: {}\nmutation dedup count: {}\ntop risky files: {}\ntop successful files: {}\nlearning source count: {}",
         regressions.len(),
         successes.len(),
         dedup_entries.len(),
         risky,
-        successful
+        successful,
+        regressions.len() + successes.len()
     ))
 }
 
@@ -265,6 +266,11 @@ impl LegacyEvolutionLogEntry {
             recombined_source_patterns: Vec::new(),
             recombined_avoided_risks: Vec::new(),
             recombination_reason_ru: None,
+            portfolio_reason_ru: None,
+            diversity_bonus: 0.0,
+            saturation_penalty: 0.0,
+            repeated_target_penalty: 0.0,
+            final_recombination_score: 0.0,
             mutation_id: self.mutation.id.clone(),
             mutation_digest: String::new(),
             status,
