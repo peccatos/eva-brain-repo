@@ -28,5 +28,7 @@ pub struct TaskContract {
     pub auto_promote: bool,
     pub max_risk: f32,
     pub min_score: f32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_corpus_id: Option<String>,
     pub created_at: u64,
 }

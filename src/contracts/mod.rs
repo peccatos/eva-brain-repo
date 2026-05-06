@@ -1,3 +1,4 @@
+pub mod corpus_contract;
 pub mod digest;
 pub mod evolution_log;
 pub mod evolution_report;
@@ -8,6 +9,7 @@ pub mod sandbox_result;
 pub mod task_contract;
 pub mod validation;
 
+pub use corpus_contract::CorpusIngestContract;
 pub use digest::{sha256_digest, tail};
 pub use evolution_log::{EvolutionLogEntry, EvolutionStatus, ValidationStatus};
 pub use evolution_report::EvolutionReport;

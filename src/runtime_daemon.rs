@@ -74,6 +74,24 @@ pub const RUNTIME_CLI_HELP: &str = r#"EVA runtime commands:
   cargo run -- --hygiene-fix-generated-tests
       Rename only long eva_generated_* tests in tests/evolution_generated_tests.rs with rollback on validation failure.
 
+  cargo run -- --ingest-corpus <PATH>
+      Read-only ingest a local corpus folder with the default corpus contract.
+
+  cargo run -- --ingest-corpus-contract <PATH>
+      Ingest a local corpus from an explicit JSON corpus contract.
+
+  cargo run -- --corpus-summary <CORPUS_ID>
+      Print stored local corpus summary JSON.
+
+  cargo run -- --list-corpora
+      List stored local corpus ids.
+
+  cargo run -- --suggest-strategy-tasks <CORPUS_ID>
+      Generate safe suggested strategy tasks from stored corpus patterns.
+
+  cargo run -- --list-suggested-tasks
+      List stored suggested task ids.
+
   cargo run -- --learning-summary
       Print compact learning memory summary.
 
@@ -159,6 +177,12 @@ pub enum RuntimeCliCommand {
     EvolutionHygiene,
     HygienePlan,
     HygieneFixGeneratedTests,
+    IngestCorpus(String),
+    IngestCorpusContract(String),
+    CorpusSummary(String),
+    ListCorpora,
+    SuggestStrategyTasks(String),
+    ListSuggestedTasks,
     LearningSummary,
     LastReport,
     Report(String),
@@ -310,6 +334,12 @@ impl RuntimeCliCommand {
         if raw_args == ["--hygiene-fix-generated-tests"] {
             return Ok(Self::HygieneFixGeneratedTests);
         }
+        if raw_args == ["--list-corpora"] {
+            return Ok(Self::ListCorpora);
+        }
+        if raw_args == ["--list-suggested-tasks"] {
+            return Ok(Self::ListSuggestedTasks);
+        }
         if raw_args == ["--learning-summary"] {
             return Ok(Self::LearningSummary);
         }
@@ -345,6 +375,18 @@ impl RuntimeCliCommand {
         }
         if raw_args.len() == 2 && raw_args[0] == "--quality-report" {
             return Ok(Self::QualityReport(raw_args[1].clone()));
+        }
+        if raw_args.len() == 2 && raw_args[0] == "--ingest-corpus" {
+            return Ok(Self::IngestCorpus(raw_args[1].clone()));
+        }
+        if raw_args.len() == 2 && raw_args[0] == "--ingest-corpus-contract" {
+            return Ok(Self::IngestCorpusContract(raw_args[1].clone()));
+        }
+        if raw_args.len() == 2 && raw_args[0] == "--corpus-summary" {
+            return Ok(Self::CorpusSummary(raw_args[1].clone()));
+        }
+        if raw_args.len() == 2 && raw_args[0] == "--suggest-strategy-tasks" {
+            return Ok(Self::SuggestStrategyTasks(raw_args[1].clone()));
         }
         if raw_args.len() == 2 && raw_args[0] == "--evolve-planned-n" {
             return Ok(Self::EvolvePlannedN(raw_args[1].parse::<usize>().map_err(

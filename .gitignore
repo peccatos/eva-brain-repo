@@ -36,3 +36,7 @@ memory/portfolio.json
 memory/evolution_policy.json
 memory/strategy_portfolio.json
 memory/hygiene/
+
+# EVA corpus learning runtime state
+memory/corpus/
+memory/tasks/suggested/

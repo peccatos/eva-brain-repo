@@ -2,6 +2,8 @@ pub mod autonomy;
 pub mod benchmark;
 pub mod campaign;
 pub mod classification;
+pub mod corpus;
+pub mod corpus_validator;
 pub mod dedup;
 pub mod evolution_policy;
 pub mod generator;
@@ -20,6 +22,7 @@ pub mod report_ru;
 pub mod rollback;
 pub mod scorer;
 pub mod strategy_portfolio;
+pub mod strategy_task_suggester;
 pub mod success_memory;
 pub mod task_validator;
 pub mod templates;
@@ -36,6 +39,11 @@ pub use campaign::{
 pub use classification::{
     classify_mutation_kind, classify_mutation_kind_label, mutation_class_label, MutationClass,
 };
+pub use corpus::{
+    default_corpus_contract, ingest_corpus, list_corpora, load_corpus_patterns,
+    load_corpus_summary, CorpusPatterns, CorpusSummary,
+};
+pub use corpus_validator::validate_corpus_contract;
 pub use dedup::{
     compute_mutation_digest, load_dedup_entries, record_dedup_entry, should_reject_duplicate_bad,
     DedupEntry,
@@ -80,6 +88,7 @@ pub use strategy_portfolio::{
     ensure_strategy_portfolio, infer_strategy, load_strategy_portfolio, print_strategy_portfolio,
     refresh_strategy_portfolio, StrategyPortfolio, StrategyPortfolioEntry,
 };
+pub use strategy_task_suggester::{list_suggested_tasks, suggest_strategy_tasks};
 pub use success_memory::{load_success_patterns, record_success_pattern, SuccessPatternEntry};
 pub use task_validator::{
     load_stored_task_contract, load_task_contract, matches_target_patterns, store_task_contract,

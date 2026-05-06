@@ -1,6 +1,7 @@
 use eva_runtime_with_task_validator::{
-    autonomy_status, build_project_phase_runtime_output, candidate_diff, distill_patterns,
-    fix_generated_test_names, ingest_repo_patterns, learning_summary, list_candidates,
+    autonomy_status, build_project_phase_runtime_output, candidate_diff, default_corpus_contract,
+    distill_patterns, fix_generated_test_names, ingest_corpus, ingest_repo_patterns,
+    learning_summary, list_candidates, list_corpora, list_suggested_tasks, load_corpus_summary,
     load_metrics, print_benchmark, print_campaign, print_evolution_policy, print_hygiene_plan,
     print_hygiene_report, print_last_campaign_report, print_last_report, print_portfolio,
     print_quality_report, print_report, print_strategy_portfolio, promote_candidate,
@@ -8,8 +9,8 @@ use eva_runtime_with_task_validator::{
     render_recombined_hypotheses, replay_candidate, review_candidate, run_benchmark,
     run_evolution_cycle, run_planned_cycles, run_planned_evolution_cycle,
     run_recombined_evolution_cycle, run_repo_patch_report, run_stored_campaign, run_task_from_path,
-    serve_runtime_daemon, should_run_repo_patch_mode, CycleInput, RepoPatchCliConfig,
-    RuntimeCliCommand, RuntimeCycleRunner, RUNTIME_CLI_HELP,
+    serve_runtime_daemon, should_run_repo_patch_mode, suggest_strategy_tasks, CycleInput,
+    RepoPatchCliConfig, RuntimeCliCommand, RuntimeCycleRunner, RUNTIME_CLI_HELP,
 };
 use serde::Deserialize;
 use std::fs;
@@ -221,6 +222,86 @@ fn main() {
                 Ok(status) => println!("{status}"),
                 Err(err) => {
                     eprintln!("hygiene_fix_generated_tests_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::IngestCorpus(path)) => {
+            match ingest_corpus("memory", &default_corpus_contract(&path)) {
+                Ok(summary) => println!(
+                    "{}",
+                    serde_json::to_string_pretty(&summary).expect("serialize corpus summary")
+                ),
+                Err(err) => {
+                    eprintln!("ingest_corpus_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::IngestCorpusContract(path)) => {
+            let contract = fs::read_to_string(&path)
+                .map_err(|error| format!("failed to read corpus contract: {error}"))
+                .and_then(|contents| {
+                    serde_json::from_str::<eva_runtime_with_task_validator::CorpusIngestContract>(
+                        &contents,
+                    )
+                    .map_err(|error| format!("failed to parse corpus contract: {error}"))
+                });
+            match contract.and_then(|contract| ingest_corpus("memory", &contract)) {
+                Ok(summary) => println!(
+                    "{}",
+                    serde_json::to_string_pretty(&summary).expect("serialize corpus summary")
+                ),
+                Err(err) => {
+                    eprintln!("ingest_corpus_contract_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::CorpusSummary(corpus_id)) => {
+            match load_corpus_summary("memory", &corpus_id) {
+                Ok(summary) => println!(
+                    "{}",
+                    serde_json::to_string_pretty(&summary).expect("serialize corpus summary")
+                ),
+                Err(err) => {
+                    eprintln!("corpus_summary_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::ListCorpora) => {
+            match list_corpora("memory") {
+                Ok(corpora) => println!("{}", corpora.join("\n")),
+                Err(err) => {
+                    eprintln!("list_corpora_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::SuggestStrategyTasks(corpus_id)) => {
+            match suggest_strategy_tasks("memory", &corpus_id) {
+                Ok(tasks) => println!(
+                    "{}",
+                    serde_json::to_string_pretty(&tasks).expect("serialize suggested tasks")
+                ),
+                Err(err) => {
+                    eprintln!("suggest_strategy_tasks_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::ListSuggestedTasks) => {
+            match list_suggested_tasks("memory") {
+                Ok(tasks) => println!("{}", tasks.join("\n")),
+                Err(err) => {
+                    eprintln!("list_suggested_tasks_error: {err}");
                     std::process::exit(1);
                 }
             }

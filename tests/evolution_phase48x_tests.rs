@@ -248,6 +248,7 @@ fn safe_task(task_id: &str, cycles: usize) -> TaskContract {
         auto_promote: false,
         max_risk: 0.2,
         min_score: 5.0,
+        source_corpus_id: None,
         created_at: 1,
     }
 }
