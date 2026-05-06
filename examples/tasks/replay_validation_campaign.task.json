@@ -1,0 +1,44 @@
+{
+  "task_id": "task-replay-validation-campaign-001",
+  "title_ru": "Усиление replay и validation слоя EVA",
+  "goal_ru": "Провести ограниченную evolution campaign для усиления тестов, replay-проверок и validation safety слоя без изменения core.",
+  "allowed_targets": [
+    "tests/*",
+    "src/evolution/*",
+    "src/promotion/*",
+    "src/sandbox/*",
+    "src/runtime/*"
+  ],
+  "forbidden_targets": [
+    "src/core/*",
+    "src/main.rs",
+    "src/lib.rs",
+    "Cargo.toml"
+  ],
+  "preferred_objectives": [
+    "improve_tests",
+    "improve_replayability",
+    "improve_validation",
+    "improve_reliability"
+  ],
+  "allowed_mutation_kinds": [
+    "add_unit_test",
+    "add_replay_assertion",
+    "add_metric_update",
+    "add_learning_summary_field"
+  ],
+  "denied_mutation_kinds": [
+    "delete_code",
+    "rewrite_function",
+    "free_diff",
+    "dependency_add"
+  ],
+  "cycles": 1,
+  "require_replay": true,
+  "require_benchmark": true,
+  "require_russian_report": true,
+  "auto_promote": false,
+  "max_risk": 0.25,
+  "min_score": 5.0,
+  "created_at": 0
+}
