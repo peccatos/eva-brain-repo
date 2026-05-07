@@ -3,6 +3,9 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[path = "evolution_test_support.rs"]
+mod evolution_test_support;
+
 use eva_runtime_with_task_validator::contracts::{MutationContract, MutationKind};
 use eva_runtime_with_task_validator::{load_report_json, validate_mutation};
 
@@ -61,9 +64,8 @@ fn add_replay_assertion_validates_tests_target() {
 #[test]
 fn append_comment_still_cannot_be_candidate() {
     let root = temp_crate("phase45r-evolve");
-    let output = Command::new(env!("CARGO_BIN_EXE_eva_runtime_with_task_validator"))
+    let output = evolution_test_support::eva_command(&root)
         .arg("--evolve")
-        .current_dir(&root)
         .output()
         .expect("run evolve");
     assert!(output.status.success());
@@ -86,9 +88,8 @@ fn useful_template_can_become_candidate() {
     let root = temp_crate("phase45r-planned");
     seed_graph(&root);
 
-    let output = Command::new(env!("CARGO_BIN_EXE_eva_runtime_with_task_validator"))
+    let output = evolution_test_support::eva_command(&root)
         .arg("--evolve-planned")
-        .current_dir(&root)
         .output()
         .expect("run planned evolution");
     assert!(
@@ -122,17 +123,15 @@ fn russian_report_is_written_and_printed() {
     let root = temp_crate("phase45r-report");
     seed_graph(&root);
 
-    let output = Command::new(env!("CARGO_BIN_EXE_eva_runtime_with_task_validator"))
+    let output = evolution_test_support::eva_command(&root)
         .arg("--evolve-planned")
-        .current_dir(&root)
         .output()
         .expect("run planned evolution");
     assert!(output.status.success());
 
     let run_id = latest_run_id(&root);
-    let last_report = Command::new(env!("CARGO_BIN_EXE_eva_runtime_with_task_validator"))
+    let last_report = evolution_test_support::eva_command(&root)
         .arg("--last-report")
-        .current_dir(&root)
         .output()
         .expect("print last report");
     assert!(last_report.status.success());
@@ -140,9 +139,8 @@ fn russian_report_is_written_and_printed() {
     assert!(last_report_stdout.contains("Отчёт EVA"));
     assert!(last_report_stdout.contains("Цель"));
 
-    let specific_report = Command::new(env!("CARGO_BIN_EXE_eva_runtime_with_task_validator"))
+    let specific_report = evolution_test_support::eva_command(&root)
         .args(["--report", &run_id])
-        .current_dir(&root)
         .output()
         .expect("print report");
     assert!(specific_report.status.success());
@@ -159,7 +157,7 @@ fn russian_report_is_written_and_printed() {
 }
 
 fn temp_crate(name: &str) -> PathBuf {
-    let root = temp_dir(name);
+    let root = evolution_test_support::unique_evolution_root(name);
     fs::create_dir_all(root.join("src")).expect("create src");
     fs::create_dir_all(root.join("memory")).expect("create memory");
     fs::create_dir_all(root.join("sandboxes")).expect("create sandboxes");
@@ -236,9 +234,5 @@ fn sandbox_entries(root: &PathBuf) -> usize {
 }
 
 fn temp_dir(name: &str) -> PathBuf {
-    let millis = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("time")
-        .as_millis();
-    std::env::temp_dir().join(format!("{name}-{}-{millis}", std::process::id()))
+    evolution_test_support::unique_evolution_root(name)
 }

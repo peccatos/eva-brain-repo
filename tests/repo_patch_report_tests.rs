@@ -52,6 +52,9 @@ fn repo_patch_report_writes_report_summary_and_sections() {
 name = "sample_repo"
 version = "0.1.0"
 edition = "2021"
+
+[lib]
+doctest = false
 "#,
             ),
             ("src/lib.rs", "pub fn meaning() -> i32 { 42 }\n"),

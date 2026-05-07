@@ -3,6 +3,9 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[path = "evolution_test_support.rs"]
+mod evolution_test_support;
+
 use eva_runtime_with_task_validator::{
     promote_candidate, propose_mutation_plans_for_task, review_candidate, validate_task_contract,
     DeniedMutationKind, MutationKind, MutationObjective, TaskContract,
@@ -264,9 +267,8 @@ fn write_task(root: &PathBuf, task: &TaskContract) -> PathBuf {
 }
 
 fn run_ok(root: &PathBuf, args: &[&str]) -> String {
-    let output = Command::new(env!("CARGO_BIN_EXE_eva_runtime_with_task_validator"))
+    let output = evolution_test_support::eva_command(root)
         .args(args)
-        .current_dir(root)
         .output()
         .expect("run command");
     assert!(
@@ -294,7 +296,7 @@ fn latest_candidate_run_id(root: &PathBuf) -> String {
 }
 
 fn temp_crate(name: &str) -> PathBuf {
-    let root = temp_dir(name);
+    let root = evolution_test_support::unique_evolution_root(name);
     fs::create_dir_all(root.join("src/evolution")).expect("create src evolution");
     fs::create_dir_all(root.join("memory")).expect("create memory");
     fs::create_dir_all(root.join("sandboxes")).expect("create sandboxes");
@@ -389,9 +391,5 @@ fn seed_autonomy_ready_state(root: &PathBuf) {
 }
 
 fn temp_dir(name: &str) -> PathBuf {
-    let millis = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("time")
-        .as_millis();
-    std::env::temp_dir().join(format!("{name}-{}-{millis}", std::process::id()))
+    evolution_test_support::unique_evolution_root(name)
 }

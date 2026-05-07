@@ -2,6 +2,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[path = "evolution_test_support.rs"]
+mod evolution_test_support;
+
 use eva_runtime_with_task_validator::contracts::{EvolutionLogEntry, EvolutionStatus};
 use eva_runtime_with_task_validator::evolution::memory::{
     load_candidate_summary, maybe_store_candidate, store_candidate, CandidateSummary,
@@ -445,24 +448,25 @@ fn promotion_rejects_forbidden_new_files() {
 }
 
 fn temp_crate(name: &str) -> PathBuf {
-    let root = temp_dir(name);
+    let root = evolution_test_support::unique_evolution_root(name);
     fs::create_dir_all(root.join("src")).expect("create crate src");
     fs::write(
         root.join("Cargo.toml"),
-        "[package]\nname = \"eva_phase25_temp\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+        "[package]\nname = \"eva_phase25_temp\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[lib]\ndoctest = false\n",
     )
     .expect("write cargo toml");
     fs::write(root.join("src/main.rs"), "fn main() {}\n").expect("write main");
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn probe_lib() -> bool { true }\n",
+    )
+    .expect("write lib");
     fs::write(root.join("src/probe.rs"), "pub fn probe() {}\n").expect("write probe");
     root
 }
 
 fn temp_dir(name: &str) -> PathBuf {
-    let millis = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("time")
-        .as_millis();
-    std::env::temp_dir().join(format!("{name}-{}-{millis}", std::process::id()))
+    evolution_test_support::unique_evolution_root(name)
 }
 
 trait ReadToStringLossy {

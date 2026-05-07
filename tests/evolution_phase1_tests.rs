@@ -1,5 +1,8 @@
 use std::fs;
 
+#[path = "evolution_test_support.rs"]
+mod evolution_test_support;
+
 use eva_runtime_with_task_validator::{
     apply_mutation, score_cycle, validate_mutation, CommandResult, MutationContract, MutationKind,
 };
@@ -27,7 +30,7 @@ fn validator_rejects_core_and_path_escape() {
 
 #[test]
 fn mutator_applies_only_to_sandbox_file() {
-    let root = std::env::temp_dir().join(format!("eva-mutator-test-{}", std::process::id()));
+    let root = evolution_test_support::unique_evolution_root("eva-mutator-test");
     let source_dir = root.join("src");
     fs::create_dir_all(&source_dir).expect("create temp src");
     fs::write(source_dir.join("probe.rs"), "pub fn probe() {}\n").expect("write probe");

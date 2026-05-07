@@ -233,6 +233,72 @@ pub const RUNTIME_CLI_HELP: &str = r#"EVA runtime commands:
   cargo run -- --proof-snapshot-json
       Capture and print a governance proof snapshot JSON.
 
+  cargo run -- --release-preflight <RUN_ID>
+      Validate a governance-approved replay-verified candidate for metadata-only release.
+
+  cargo run -- --release-bundle <RUN_ID>
+      Build a deterministic local release bundle for a safe approved candidate.
+
+  cargo run -- --release-manifest <RELEASE_ID>
+      Print a stored release manifest JSON.
+
+  cargo run -- --release-changelog <RELEASE_ID>
+      Print a stored Russian release changelog.
+
+  cargo run -- --rollback-manifest <RELEASE_ID>
+      Print a stored rollback manifest JSON.
+
+  cargo run -- --list-releases
+      List stored release ids.
+
+  cargo run -- --last-release
+      Print the latest stored release report and changelog.
+
+  cargo run -- --release-status
+      Print compact release runtime status.
+
+  cargo run -- --release-health
+      Print compact release health index.
+
+  cargo run -- --release-health-json
+      Print release health JSON.
+
+  cargo run -- --artifact-audit
+      Print metadata-only runtime artifact audit.
+
+  cargo run -- --artifact-audit-json
+      Print runtime artifact audit JSON.
+
+  cargo run -- --determinism-audit
+      Print deterministic structure audit.
+
+  cargo run -- --determinism-audit-json
+      Print deterministic structure audit JSON.
+
+  cargo run -- --preflight-gate
+      Print combined local release gate v2.
+
+  cargo run -- --preflight-gate-json
+      Print combined local release gate v2 JSON.
+
+  cargo run -- --release-ledger
+      Print append-only release attempt ledger.
+
+  cargo run -- --release-ledger-json
+      Print append-only release attempt ledger JSON.
+
+  cargo run -- --record-release-attempt <RELEASE_ID>
+      Append a metadata-only release attempt record.
+
+  cargo run -- --future-phases
+      Print static future phase registry.
+
+  cargo run -- --future-phases-json
+      Print static future phase registry JSON.
+
+  cargo run -- --operator-runbook
+      Print concise Russian operator runbook.
+
   cargo run -- --distill-patterns
       Distill local-only successful and risky evolution patterns into memory/patterns/.
 
@@ -343,6 +409,28 @@ pub enum RuntimeCliCommand {
     GovernanceStatus,
     PromotionReadyApproved,
     PromoteApproved(String),
+    ReleasePreflight(String),
+    ReleaseBundle(String),
+    ReleaseManifest(String),
+    ReleaseChangelog(String),
+    RollbackManifest(String),
+    ListReleases,
+    LastRelease,
+    ReleaseStatus,
+    ReleaseHealth,
+    ReleaseHealthJson,
+    ArtifactAudit,
+    ArtifactAuditJson,
+    DeterminismAudit,
+    DeterminismAuditJson,
+    PreflightGate,
+    PreflightGateJson,
+    ReleaseLedger,
+    ReleaseLedgerJson,
+    RecordReleaseAttempt(String),
+    FuturePhases,
+    FuturePhasesJson,
+    OperatorRunbook,
     ReleaseProposal,
     ReleaseProposalJson,
     ProofSnapshot,
@@ -554,11 +642,77 @@ impl RuntimeCliCommand {
         if raw_args == ["--promotion-ready-approved"] {
             return Ok(Self::PromotionReadyApproved);
         }
+        if raw_args == ["--list-releases"] {
+            return Ok(Self::ListReleases);
+        }
+        if raw_args == ["--last-release"] {
+            return Ok(Self::LastRelease);
+        }
+        if raw_args == ["--release-status"] {
+            return Ok(Self::ReleaseStatus);
+        }
+        if raw_args == ["--release-health"] {
+            return Ok(Self::ReleaseHealth);
+        }
+        if raw_args == ["--release-health-json"] {
+            return Ok(Self::ReleaseHealthJson);
+        }
+        if raw_args == ["--artifact-audit"] {
+            return Ok(Self::ArtifactAudit);
+        }
+        if raw_args == ["--artifact-audit-json"] {
+            return Ok(Self::ArtifactAuditJson);
+        }
+        if raw_args == ["--determinism-audit"] {
+            return Ok(Self::DeterminismAudit);
+        }
+        if raw_args == ["--determinism-audit-json"] {
+            return Ok(Self::DeterminismAuditJson);
+        }
+        if raw_args == ["--preflight-gate"] {
+            return Ok(Self::PreflightGate);
+        }
+        if raw_args == ["--preflight-gate-json"] {
+            return Ok(Self::PreflightGateJson);
+        }
+        if raw_args == ["--release-ledger"] {
+            return Ok(Self::ReleaseLedger);
+        }
+        if raw_args == ["--release-ledger-json"] {
+            return Ok(Self::ReleaseLedgerJson);
+        }
+        if raw_args.len() == 2 && raw_args[0] == "--record-release-attempt" {
+            return Ok(Self::RecordReleaseAttempt(raw_args[1].clone()));
+        }
+        if raw_args == ["--future-phases"] {
+            return Ok(Self::FuturePhases);
+        }
+        if raw_args == ["--future-phases-json"] {
+            return Ok(Self::FuturePhasesJson);
+        }
+        if raw_args == ["--operator-runbook"] {
+            return Ok(Self::OperatorRunbook);
+        }
         if raw_args == ["--release-proposal"] {
             return Ok(Self::ReleaseProposal);
         }
         if raw_args == ["--release-proposal-json"] {
             return Ok(Self::ReleaseProposalJson);
+        }
+        if raw_args.len() == 2 && raw_args[0] == "--release-preflight" {
+            return Ok(Self::ReleasePreflight(raw_args[1].clone()));
+        }
+        if raw_args.len() == 2 && raw_args[0] == "--release-bundle" {
+            return Ok(Self::ReleaseBundle(raw_args[1].clone()));
+        }
+        if raw_args.len() == 2 && raw_args[0] == "--release-manifest" {
+            return Ok(Self::ReleaseManifest(raw_args[1].clone()));
+        }
+        if raw_args.len() == 2 && raw_args[0] == "--release-changelog" {
+            return Ok(Self::ReleaseChangelog(raw_args[1].clone()));
+        }
+        if raw_args.len() == 2 && raw_args[0] == "--rollback-manifest" {
+            return Ok(Self::RollbackManifest(raw_args[1].clone()));
         }
         if raw_args == ["--proof-snapshot"] {
             return Ok(Self::ProofSnapshot);
@@ -1504,6 +1658,45 @@ fn parse_headers(headers: &str) -> HashMap<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    static RUNTIME_TEST_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+    fn unique_runtime_test_root(name: &str) -> std::path::PathBuf {
+        let sanitized = name
+            .chars()
+            .map(|ch| {
+                if ch.is_ascii_alphanumeric() || ch == '-' || ch == '_' {
+                    ch.to_ascii_lowercase()
+                } else {
+                    '-'
+                }
+            })
+            .collect::<String>()
+            .trim_matches('-')
+            .to_string();
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time")
+            .as_nanos();
+        let counter = RUNTIME_TEST_COUNTER.fetch_add(1, Ordering::Relaxed);
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join(".eva-runtime-tests")
+            .join(format!(
+                "eva-runtime-{}-{}-{}-{}",
+                if sanitized.is_empty() {
+                    "test"
+                } else {
+                    &sanitized
+                },
+                std::process::id(),
+                nanos,
+                counter
+            ));
+        std::fs::create_dir_all(&root).expect("create runtime test root");
+        root
+    }
 
     #[test]
     fn runtime_cli_defaults_to_help() {
@@ -1704,11 +1897,8 @@ mod tests {
 
     #[test]
     fn runtime_cli_loads_json_config() {
-        let path = std::env::temp_dir().join(format!(
-            "eva_runtime_config_test_{}_{}.json",
-            std::process::id(),
-            "config"
-        ));
+        let root = unique_runtime_test_root("runtime_cli_loads_json_config");
+        let path = root.join("eva_runtime_config_test_config.json");
         std::fs::write(
             &path,
             r#"{
@@ -1745,6 +1935,6 @@ mod tests {
             _ => panic!("expected serve command"),
         }
 
-        let _ = std::fs::remove_file(path);
+        let _ = std::fs::remove_dir_all(root);
     }
 }

@@ -2,17 +2,40 @@
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+static TOOL_COUNTER: AtomicU64 = AtomicU64::new(0);
+
 pub fn unique_tool_root(name: &str) -> PathBuf {
-    let mut path = std::env::temp_dir();
+    let sanitized = name
+        .chars()
+        .map(|ch| {
+            if ch.is_ascii_alphanumeric() || ch == '-' || ch == '_' {
+                ch.to_ascii_lowercase()
+            } else {
+                '-'
+            }
+        })
+        .collect::<String>()
+        .trim_matches('-')
+        .to_string();
     let stamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("system time")
         .as_nanos();
     let pid = std::process::id();
-    path.push(format!("eva_tool_layer_{name}_{pid}_{stamp}"));
-    path
+    let counter = TOOL_COUNTER.fetch_add(1, Ordering::Relaxed);
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join(".eva-runtime-tests")
+        .join(format!(
+            "eva-tool-{}-{pid}-{stamp}-{counter}",
+            if sanitized.is_empty() {
+                "test"
+            } else {
+                &sanitized
+            }
+        ))
 }
 
 pub fn init_tool_workspace(name: &str) -> PathBuf {
@@ -39,6 +62,9 @@ pub fn init_cargo_tool_workspace(name: &str, lib_contents: &str) -> PathBuf {
 name = "eva_tool_test_workspace"
 version = "0.1.0"
 edition = "2021"
+
+[lib]
+doctest = false
 
 [dependencies]
 "#,

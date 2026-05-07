@@ -3,6 +3,9 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[path = "evolution_test_support.rs"]
+mod evolution_test_support;
+
 use eva_runtime_with_task_validator::evolution::{
     compute_mutation_digest, load_stored_task_contract, record_dedup_entry,
 };
@@ -301,7 +304,7 @@ fn temp_campaign_crate(name: &str) -> PathBuf {
     fs::create_dir_all(root.join("memory")).expect("memory");
     fs::write(
         root.join("Cargo.toml"),
-        "[package]\nname = \"phase55_temp\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\nserde = { version = \"1\", features = [\"derive\"] }\nserde_json = \"1\"\n",
+        "[package]\nname = \"phase55_temp\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[lib]\ndoctest = false\n\n[dependencies]\nserde = { version = \"1\", features = [\"derive\"] }\nserde_json = \"1\"\n",
     )
     .expect("cargo");
     fs::write(root.join("src/main.rs"), "fn main() {}\n").expect("main");
@@ -554,9 +557,8 @@ fn write_legacy_corpus_artifacts(root: &Path, corpus_id: &str) {
 }
 
 fn run_ok(root: &Path, args: &[&str]) -> String {
-    let output = Command::new(env!("CARGO_BIN_EXE_eva_runtime_with_task_validator"))
+    let output = evolution_test_support::eva_command(root)
         .args(args)
-        .current_dir(root)
         .output()
         .expect("run");
     assert!(
@@ -568,9 +570,5 @@ fn run_ok(root: &Path, args: &[&str]) -> String {
 }
 
 fn temp_dir(prefix: &str) -> PathBuf {
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("time")
-        .as_nanos();
-    std::env::temp_dir().join(format!("{prefix}-{nanos}"))
+    evolution_test_support::unique_evolution_root(prefix)
 }

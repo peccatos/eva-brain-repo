@@ -3,6 +3,9 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[path = "evolution_test_support.rs"]
+mod evolution_test_support;
+
 use eva_runtime_with_task_validator::{
     generate_from_recombined_hypothesis, load_recombined_hypotheses, validate_mutation,
 };
@@ -152,7 +155,7 @@ fn temp_crate(name: &str) -> PathBuf {
     fs::create_dir_all(root.join("sandboxes")).expect("sandboxes");
     fs::write(
         root.join("Cargo.toml"),
-        "[package]\nname = \"phase50_temp\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+        "[package]\nname = \"phase50_temp\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[lib]\ndoctest = false\n",
     )
     .expect("cargo toml");
     fs::write(root.join("src/main.rs"), "fn main() {}\n").expect("main");
@@ -297,9 +300,8 @@ fn latest_file_with_suffix(dir: &PathBuf, suffix: &str) -> PathBuf {
 }
 
 fn run_ok(root: &PathBuf, args: &[&str]) -> String {
-    let output = Command::new(env!("CARGO_BIN_EXE_eva_runtime_with_task_validator"))
+    let output = evolution_test_support::eva_command(root)
         .args(args)
-        .current_dir(root)
         .output()
         .expect("run command");
     assert!(
@@ -311,9 +313,5 @@ fn run_ok(root: &PathBuf, args: &[&str]) -> String {
 }
 
 fn temp_dir(name: &str) -> PathBuf {
-    let millis = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("time")
-        .as_millis();
-    std::env::temp_dir().join(format!("{name}-{}-{millis}", std::process::id()))
+    evolution_test_support::unique_evolution_root(name)
 }

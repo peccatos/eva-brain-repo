@@ -3,6 +3,9 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[path = "evolution_test_support.rs"]
+mod evolution_test_support;
+
 use eva_runtime_with_task_validator::load_report_json;
 
 #[test]
@@ -116,9 +119,8 @@ fn benchmark_does_not_auto_promote() {
 }
 
 fn run_ok(root: &PathBuf, args: &[&str]) -> String {
-    let output = Command::new(env!("CARGO_BIN_EXE_eva_runtime_with_task_validator"))
+    let output = evolution_test_support::eva_command(root)
         .args(args)
-        .current_dir(root)
         .output()
         .expect("run command");
     assert!(
@@ -126,6 +128,7 @@ fn run_ok(root: &PathBuf, args: &[&str]) -> String {
         "stderr={}",
         String::from_utf8_lossy(&output.stderr)
     );
+    evolution_test_support::remove_root(&root.join("target"));
     String::from_utf8_lossy(&output.stdout).to_string()
 }
 
@@ -168,19 +171,26 @@ fn sandbox_entries(root: &PathBuf) -> usize {
 }
 
 fn temp_crate(name: &str) -> PathBuf {
-    let root = temp_dir(name);
+    let root = evolution_test_support::unique_evolution_root(name);
     fs::create_dir_all(root.join("src")).expect("create src");
+    fs::create_dir_all(root.join("tests")).expect("create tests");
     fs::create_dir_all(root.join("memory")).expect("create memory");
     fs::create_dir_all(root.join("sandboxes")).expect("create sandboxes");
     fs::write(
         root.join("Cargo.toml"),
-        "[package]\nname = \"phase46r_temp\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+        "[package]\nname = \"phase46r_temp\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[lib]\ndoctest = false\n",
     )
     .expect("write cargo");
     fs::write(root.join("src/main.rs"), "fn main() {}\n").expect("write main");
+    fs::write(root.join("src/lib.rs"), "pub fn probe() -> bool { true }\n").expect("write lib");
     fs::write(root.join("src/probe.rs"), "pub fn probe() {}\n").expect("write probe");
     fs::write(root.join("src/runtime_cycle.rs"), "pub fn cycle() {}\n")
         .expect("write runtime cycle");
+    fs::write(
+        root.join("tests/evolution_generated_tests.rs"),
+        "#[test]\nfn generated_test() { assert!(true); }\n",
+    )
+    .expect("write tests");
     root
 }
 
@@ -201,9 +211,5 @@ fn seed_graph(root: &PathBuf) {
 }
 
 fn temp_dir(name: &str) -> PathBuf {
-    let millis = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("time")
-        .as_millis();
-    std::env::temp_dir().join(format!("{name}-{}-{millis}", std::process::id()))
+    evolution_test_support::unique_evolution_root(name)
 }

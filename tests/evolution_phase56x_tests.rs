@@ -3,6 +3,9 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[path = "evolution_test_support.rs"]
+mod evolution_test_support;
+
 use eva_runtime_with_task_validator::{
     adjust_task_from_campaign, list_adjusted_tasks, print_last_task_adjustment, DeniedMutationKind,
     MutationKind, MutationObjective, TaskContract,
@@ -238,11 +241,7 @@ fn list_adjusted_tasks_prints_adjusted_task_ids() {
 }
 
 fn temp_runtime_root(name: &str) -> PathBuf {
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("time")
-        .as_nanos();
-    let root = std::env::temp_dir().join(format!("{name}-{nanos}"));
+    let root = evolution_test_support::unique_evolution_root(name);
     fs::create_dir_all(root.join("src")).expect("src");
     fs::create_dir_all(root.join("memory/tasks")).expect("tasks");
     fs::create_dir_all(root.join("memory/campaigns")).expect("campaigns");
@@ -373,9 +372,8 @@ fn load_adjusted_task(path: &str) -> TaskContract {
 }
 
 fn run_ok(root: &Path, args: &[&str]) -> String {
-    let output = Command::new(env!("CARGO_BIN_EXE_eva_runtime_with_task_validator"))
+    let output = evolution_test_support::eva_command(root)
         .args(args)
-        .current_dir(root)
         .output()
         .expect("run");
     assert!(

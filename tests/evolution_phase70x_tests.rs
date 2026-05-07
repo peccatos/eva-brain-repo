@@ -2,6 +2,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[path = "evolution_test_support.rs"]
+mod evolution_test_support;
+
 use eva_runtime_with_task_validator::contracts::EvolutionStatus;
 use eva_runtime_with_task_validator::evolution::{CandidateSummary, ReplayResult};
 use eva_runtime_with_task_validator::graph::{GraphEdge, GraphNode};
@@ -400,17 +403,13 @@ fn demo_command_does_not_create_sandbox_leaks_or_mutate_source_files() {
 }
 
 fn temp_runtime_root(name: &str) -> PathBuf {
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("time")
-        .as_nanos();
-    let root = std::env::temp_dir().join(format!("{name}-{nanos}"));
+    let root = evolution_test_support::unique_evolution_root(name);
     fs::create_dir_all(root.join("src")).expect("src");
     fs::create_dir_all(root.join("tests")).expect("tests");
     fs::create_dir_all(root.join("memory")).expect("memory");
     fs::write(
         root.join("Cargo.toml"),
-        "[package]\nname = \"phase70_temp\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+        "[package]\nname = \"phase70_temp\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[lib]\ndoctest = false\n",
     )
     .expect("cargo");
     fs::write(root.join("src/main.rs"), "fn main() {}\n").expect("main");
