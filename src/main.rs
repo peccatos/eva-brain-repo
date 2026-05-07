@@ -3,14 +3,21 @@ use eva_runtime_with_task_validator::{
     build_project_phase_runtime_output, candidate_diff, candidate_lifecycle,
     default_corpus_contract, defer_candidate, distill_patterns, fix_generated_test_names,
     governance_status, ingest_corpus, ingest_repo_patterns, latest_corpus_id, learning_summary,
-    list_adjusted_tasks, list_bounded_runs, list_candidates, list_corpora, list_suggested_tasks,
-    list_supervised_runs, load_corpus_summary, load_metrics, preview_campaign_recombination,
+    list_adjusted_tasks, list_bounded_runs, list_candidates, list_corpora, list_releases,
+    list_suggested_tasks, list_supervised_runs, load_corpus_summary, load_metrics,
+    preview_campaign_recombination, print_artifact_audit, print_artifact_audit_json,
     print_benchmark, print_bounded_run_report, print_campaign, print_campaign_report,
-    print_eva_status, print_evolution_policy, print_hygiene_plan, print_hygiene_report,
-    print_last_bounded_run, print_last_campaign_report, print_last_report,
-    print_last_supervised_run, print_last_task_adjustment, print_portfolio, print_promotion_queue,
-    print_proof_json, print_proof_report, print_proof_snapshot, print_proof_snapshot_json,
-    print_quality_report, print_release_proposal, print_release_proposal_json, print_report,
+    print_determinism_audit, print_determinism_audit_json, print_eva_status,
+    print_evolution_policy, print_future_phases, print_future_phases_json, print_hygiene_plan,
+    print_hygiene_report, print_last_bounded_run, print_last_campaign_report, print_last_release,
+    print_last_report, print_last_supervised_run, print_last_task_adjustment,
+    print_operator_runbook, print_portfolio, print_preflight_gate, print_preflight_gate_json,
+    print_promotion_queue, print_proof_json, print_proof_report, print_proof_snapshot,
+    print_proof_snapshot_json, print_quality_report, print_record_release_attempt,
+    print_release_bundle_json, print_release_changelog, print_release_health,
+    print_release_health_json, print_release_ledger, print_release_ledger_json,
+    print_release_manifest, print_release_preflight_json, print_release_proposal,
+    print_release_proposal_json, print_release_status, print_report, print_rollback_manifest,
     print_strategy_portfolio, print_supervised_run_report, promote_approved_candidate,
     promote_candidate, promotion_blocked_items, promotion_ready_approved, promotion_ready_items,
     refresh_metrics, refresh_portfolio, refresh_promotion_queue, refresh_report,
@@ -814,6 +821,220 @@ fn main() {
                 Ok(report) => println!("{report}"),
                 Err(err) => {
                     eprintln!("proof_snapshot_json_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::ReleasePreflight(run_id)) => {
+            match print_release_preflight_json(".", "memory", &run_id) {
+                Ok(report) => println!("{report}"),
+                Err(err) => {
+                    eprintln!("release_preflight_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::ReleaseBundle(run_id)) => {
+            match print_release_bundle_json(".", "memory", &run_id) {
+                Ok(report) => println!("{report}"),
+                Err(err) => {
+                    eprintln!("release_bundle_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::ReleaseManifest(release_id)) => {
+            match print_release_manifest("memory", &release_id) {
+                Ok(report) => println!("{report}"),
+                Err(err) => {
+                    eprintln!("release_manifest_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::ReleaseChangelog(release_id)) => {
+            match print_release_changelog("memory", &release_id) {
+                Ok(report) => println!("{report}"),
+                Err(err) => {
+                    eprintln!("release_changelog_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::RollbackManifest(release_id)) => {
+            match print_rollback_manifest("memory", &release_id) {
+                Ok(report) => println!("{report}"),
+                Err(err) => {
+                    eprintln!("rollback_manifest_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::ListReleases) => {
+            match list_releases("memory") {
+                Ok(ids) => println!("{}", ids.join("\n")),
+                Err(err) => {
+                    eprintln!("list_releases_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::LastRelease) => {
+            match print_last_release("memory") {
+                Ok(report) => println!("{report}"),
+                Err(err) => {
+                    eprintln!("last_release_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::ReleaseStatus) => {
+            match print_release_status("memory") {
+                Ok(report) => println!("{report}"),
+                Err(err) => {
+                    eprintln!("release_status_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::ReleaseHealth) => {
+            match print_release_health(".", "memory") {
+                Ok(report) => println!("{report}"),
+                Err(err) => {
+                    eprintln!("release_health_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::ReleaseHealthJson) => {
+            match print_release_health_json(".", "memory") {
+                Ok(report) => println!("{report}"),
+                Err(err) => {
+                    eprintln!("release_health_json_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::ArtifactAudit) => {
+            match print_artifact_audit(".") {
+                Ok(report) => println!("{report}"),
+                Err(err) => {
+                    eprintln!("artifact_audit_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::ArtifactAuditJson) => {
+            match print_artifact_audit_json(".") {
+                Ok(report) => println!("{report}"),
+                Err(err) => {
+                    eprintln!("artifact_audit_json_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::DeterminismAudit) => {
+            match print_determinism_audit(".", "memory") {
+                Ok(report) => println!("{report}"),
+                Err(err) => {
+                    eprintln!("determinism_audit_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::DeterminismAuditJson) => {
+            match print_determinism_audit_json(".", "memory") {
+                Ok(report) => println!("{report}"),
+                Err(err) => {
+                    eprintln!("determinism_audit_json_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::PreflightGate) => {
+            match print_preflight_gate(".", "memory") {
+                Ok(report) => println!("{report}"),
+                Err(err) => {
+                    eprintln!("preflight_gate_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::PreflightGateJson) => {
+            match print_preflight_gate_json(".", "memory") {
+                Ok(report) => println!("{report}"),
+                Err(err) => {
+                    eprintln!("preflight_gate_json_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::ReleaseLedger) => {
+            match print_release_ledger("memory") {
+                Ok(report) => println!("{report}"),
+                Err(err) => {
+                    eprintln!("release_ledger_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::ReleaseLedgerJson) => {
+            match print_release_ledger_json("memory") {
+                Ok(report) => println!("{report}"),
+                Err(err) => {
+                    eprintln!("release_ledger_json_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::RecordReleaseAttempt(release_id)) => {
+            match print_record_release_attempt(".", "memory", &release_id) {
+                Ok(report) => println!("{report}"),
+                Err(err) => {
+                    eprintln!("record_release_attempt_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::FuturePhases) => {
+            println!("{}", print_future_phases());
+            return;
+        }
+        Ok(RuntimeCliCommand::FuturePhasesJson) => {
+            match print_future_phases_json() {
+                Ok(report) => println!("{report}"),
+                Err(err) => {
+                    eprintln!("future_phases_json_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::OperatorRunbook) => {
+            match print_operator_runbook(".", "memory") {
+                Ok(report) => println!("{report}"),
+                Err(err) => {
+                    eprintln!("operator_runbook_error: {err}");
                     std::process::exit(1);
                 }
             }

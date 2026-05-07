@@ -3,6 +3,9 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[path = "evolution_test_support.rs"]
+mod evolution_test_support;
+
 use eva_runtime_with_task_validator::contracts::{MutationKind, MutationObjective, MutationPlan};
 use eva_runtime_with_task_validator::{
     extract_rust_ast, generate_from_plan, ingest_repo_patterns, propose_mutation_plans, rank_plans,
@@ -111,9 +114,8 @@ fn plan_evolution_cli_creates_no_sandbox() {
     let root = temp_crate("phase37-plan-cli");
     seed_graph(&root);
 
-    let output = Command::new(env!("CARGO_BIN_EXE_eva_runtime_with_task_validator"))
+    let output = evolution_test_support::eva_command(&root)
         .arg("--plan-evolution")
-        .current_dir(&root)
         .output()
         .expect("run plan evolution");
 
@@ -128,9 +130,8 @@ fn evolve_planned_cli_destroys_sandbox_and_updates_metrics() {
     let root = temp_crate("phase37-evolve-planned");
     seed_graph(&root);
 
-    let output = Command::new(env!("CARGO_BIN_EXE_eva_runtime_with_task_validator"))
+    let output = evolution_test_support::eva_command(&root)
         .arg("--evolve-planned")
-        .current_dir(&root)
         .output()
         .expect("run planned evolution");
 
@@ -202,7 +203,7 @@ fn seed_graph(root: &PathBuf) {
 }
 
 fn temp_crate(name: &str) -> PathBuf {
-    let root = temp_dir(name);
+    let root = evolution_test_support::unique_evolution_root(name);
     fs::create_dir_all(root.join("src")).expect("create src");
     fs::write(
         root.join("Cargo.toml"),
@@ -219,9 +220,5 @@ fn temp_crate(name: &str) -> PathBuf {
 }
 
 fn temp_dir(name: &str) -> PathBuf {
-    let millis = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("time")
-        .as_millis();
-    std::env::temp_dir().join(format!("{name}-{}-{millis}", std::process::id()))
+    evolution_test_support::unique_evolution_root(name)
 }

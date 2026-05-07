@@ -4,8 +4,10 @@ use std::path::Path;
 use crate::contracts::EvolutionLogEntry;
 use crate::contracts::ProofReport;
 use crate::evolution::{
-    governance_status, latest_proof_snapshot_id, latest_supervised_run_id,
-    load_or_refresh_promotion_queue, memory, print_proof_snapshot, refresh_metrics,
+    build_preflight_gate, build_release_health, governance_status, latest_proof_snapshot_id,
+    latest_release_id, latest_supervised_run_id, load_or_refresh_promotion_queue, memory,
+    print_artifact_audit, print_operator_runbook, print_proof_snapshot, print_release_status,
+    refresh_metrics, release_count, release_ledger_count,
 };
 
 pub fn build_proof_report(project_root: &str, memory_root: &str) -> Result<ProofReport, String> {
@@ -39,6 +41,14 @@ pub fn build_proof_report(project_root: &str, memory_root: &str) -> Result<Proof
         promotion_queue_support: true,
         supervised_task_support: true,
         governance_runtime_support: true,
+        release_runtime_support: true,
+        release_health_support: true,
+        artifact_audit_support: true,
+        determinism_audit_support: true,
+        preflight_gate_v2_support: true,
+        release_ledger_support: true,
+        future_phase_registry_support: true,
+        operator_runbook_support: true,
         auto_promote: false,
         operator_approval_required: true,
         forbidden_target_preservation: true,
@@ -51,6 +61,9 @@ pub fn build_proof_report(project_root: &str, memory_root: &str) -> Result<Proof
         approved_count: governance.approved_count,
         rejected_count: governance.rejected_count,
         deferred_count: governance.deferred_count,
+        release_count: release_count(memory_root)?,
+        release_ledger_count: release_ledger_count(memory_root)?,
+        latest_release_id: latest_release_id(memory_root)?,
         latest_bounded_run_id: latest_id_from_dir(memory_root, "bounded_runs")?,
         latest_supervised_run_id: latest_supervised_run_id(memory_root)?,
     };
@@ -72,7 +85,7 @@ fn derived_generated_at(memory_root: &str, queue_generated_at: u64) -> Result<u6
 pub fn print_eva_status(project_root: &str, memory_root: &str) -> Result<String, String> {
     let proof = build_proof_report(project_root, memory_root)?;
     Ok(format!(
-        "eva_status: candidates={} ready={} blocked={} replay_passed={} promoted={} approved={} rejected={} deferred={} bounded_latest={} supervised_latest={} proof_snapshot_latest={} auto_promote={}",
+        "eva_status: candidates={} ready={} blocked={} replay_passed={} promoted={} approved={} rejected={} deferred={} releases={} release_latest={} bounded_latest={} supervised_latest={} proof_snapshot_latest={} auto_promote={}",
         proof.candidate_count,
         proof.ready_candidates,
         proof.blocked_candidates,
@@ -81,6 +94,8 @@ pub fn print_eva_status(project_root: &str, memory_root: &str) -> Result<String,
         proof.approved_count,
         proof.rejected_count,
         proof.deferred_count,
+        proof.release_count,
+        proof.latest_release_id.as_deref().unwrap_or("none"),
         proof.latest_bounded_run_id.as_deref().unwrap_or("none"),
         proof.latest_supervised_run_id.as_deref().unwrap_or("none"),
         latest_proof_snapshot_id(memory_root)?.as_deref().unwrap_or("none"),
@@ -105,13 +120,24 @@ pub fn run_demo(project_root: &str, memory_root: &str) -> Result<String, String>
     let status = print_eva_status(project_root, memory_root)?;
     let report = print_proof_report(project_root, memory_root)?;
     let snapshot = print_proof_snapshot(project_root, memory_root)?;
+    let release_status = print_release_status(memory_root)?;
+    let health = build_release_health(project_root, memory_root)?;
+    let gate = build_preflight_gate(project_root, memory_root)?;
+    let artifact = print_artifact_audit(project_root)?;
+    let runbook = print_operator_runbook(project_root, memory_root)?;
     Ok(format!(
-        "{status}\n\ngovernance_status: approved={} rejected={} deferred={} ready_approved={} auto_promote={}\n\n{}\n\n{}",
+        "{status}\n\ngovernance_status: approved={} rejected={} deferred={} ready_approved={} auto_promote={}\n\nrelease_status: {}\nrelease_health: grade={} score={}\npreflight_gate: status={}\n\n{}\n\n{}\n\n{}\n\n{}",
         governance.approved_count,
         governance.rejected_count,
         governance.deferred_count,
         governance.promotion_ready_approved_count,
         governance.auto_promote,
+        release_status,
+        health.health_grade,
+        health.health_score,
+        gate.gate_status,
+        artifact,
+        runbook,
         report,
         snapshot
     ))
@@ -216,7 +242,7 @@ fn write_proof_report(memory_root: &str, proof: &ProofReport) -> Result<(), Stri
 
 fn render_proof_markdown(proof: &ProofReport) -> String {
     format!(
-        "# EVA Proof Report\n\nlocal_corpus_ingestion_support={}\nread_only_corpus_safety={}\ntask_suggestion_support={}\ncampaign_diagnostics_support={}\nzero_yield_task_adjustment_support={}\nbounded_campaign_loop_support={}\nrecombination_fallback_support={}\nreplay_review_support={}\npromotion_queue_support={}\nsupervised_task_support={}\ngovernance_runtime_support={}\nauto_promote={}\noperator_approval_required={}\nforbidden_target_preservation={}\n\ntotal_runs={}\ncandidate_count={}\nreplay_passed_candidates={}\npromoted_candidates={}\nready_candidates={}\nblocked_candidates={}\napproved_count={}\nrejected_count={}\ndeferred_count={}\nlatest_bounded_run_id={}\nlatest_supervised_run_id={}\n",
+        "# EVA Proof Report\n\nlocal_corpus_ingestion_support={}\nread_only_corpus_safety={}\ntask_suggestion_support={}\ncampaign_diagnostics_support={}\nzero_yield_task_adjustment_support={}\nbounded_campaign_loop_support={}\nrecombination_fallback_support={}\nreplay_review_support={}\npromotion_queue_support={}\nsupervised_task_support={}\ngovernance_runtime_support={}\nrelease_runtime_support={}\nrelease_health_support={}\nartifact_audit_support={}\ndeterminism_audit_support={}\npreflight_gate_v2_support={}\nrelease_ledger_support={}\nfuture_phase_registry_support={}\noperator_runbook_support={}\nauto_promote={}\noperator_approval_required={}\nforbidden_target_preservation={}\n\ntotal_runs={}\ncandidate_count={}\nreplay_passed_candidates={}\npromoted_candidates={}\nready_candidates={}\nblocked_candidates={}\napproved_count={}\nrejected_count={}\ndeferred_count={}\nrelease_count={}\nrelease_ledger_count={}\nlatest_release_id={}\nlatest_bounded_run_id={}\nlatest_supervised_run_id={}\n",
         proof.local_corpus_ingestion_support,
         proof.read_only_corpus_safety,
         proof.task_suggestion_support,
@@ -228,6 +254,14 @@ fn render_proof_markdown(proof: &ProofReport) -> String {
         proof.promotion_queue_support,
         proof.supervised_task_support,
         proof.governance_runtime_support,
+        proof.release_runtime_support,
+        proof.release_health_support,
+        proof.artifact_audit_support,
+        proof.determinism_audit_support,
+        proof.preflight_gate_v2_support,
+        proof.release_ledger_support,
+        proof.future_phase_registry_support,
+        proof.operator_runbook_support,
         proof.auto_promote,
         proof.operator_approval_required,
         proof.forbidden_target_preservation,
@@ -240,6 +274,9 @@ fn render_proof_markdown(proof: &ProofReport) -> String {
         proof.approved_count,
         proof.rejected_count,
         proof.deferred_count,
+        proof.release_count,
+        proof.release_ledger_count,
+        proof.latest_release_id.as_deref().unwrap_or("none"),
         proof.latest_bounded_run_id.as_deref().unwrap_or("none"),
         proof.latest_supervised_run_id.as_deref().unwrap_or("none"),
     )

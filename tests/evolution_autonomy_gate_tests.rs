@@ -2,6 +2,9 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[path = "evolution_test_support.rs"]
+mod evolution_test_support;
+
 use eva_runtime_with_task_validator::autonomy_status;
 use eva_runtime_with_task_validator::contracts::{EvolutionLogEntry, EvolutionStatus};
 
@@ -363,9 +366,5 @@ fn has_cargo_blocker(blockers: &[String]) -> bool {
 }
 
 fn temp_root(name: &str) -> PathBuf {
-    let millis = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("time")
-        .as_millis();
-    std::env::temp_dir().join(format!("{name}-{}-{millis}", std::process::id()))
+    evolution_test_support::unique_evolution_root(name)
 }

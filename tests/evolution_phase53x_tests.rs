@@ -3,6 +3,9 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[path = "evolution_test_support.rs"]
+mod evolution_test_support;
+
 use eva_runtime_with_task_validator::{
     classify_mutation_kind, classify_mutation_kind_label, compute_quality_for_hypothesis,
     mutation_class_label, refresh_evolution_policy, refresh_portfolio, run_evolution_hygiene,
@@ -196,9 +199,8 @@ fn hygiene_fix_generated_tests_rollback_works_on_validation_failure() {
     let before =
         fs::read_to_string(root.join("tests/evolution_generated_tests.rs")).expect("before");
 
-    let output = Command::new(env!("CARGO_BIN_EXE_eva_runtime_with_task_validator"))
+    let output = evolution_test_support::eva_command(&root)
         .args(["--hygiene-fix-generated-tests"])
-        .current_dir(&root)
         .output()
         .expect("run");
     assert!(!output.status.success());
@@ -233,7 +235,7 @@ fn temp_hygiene_crate(name: &str) -> PathBuf {
     fs::create_dir_all(root.join("tests")).expect("tests");
     fs::write(
         root.join("Cargo.toml"),
-        "[package]\nname = \"phase53_temp\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+        "[package]\nname = \"phase53_temp\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[lib]\ndoctest = false\n",
     )
     .expect("cargo");
     fs::write(root.join("src/main.rs"), "fn main() {}\n").expect("main");
@@ -263,9 +265,8 @@ fn long_generated_name() -> String {
 }
 
 fn run_ok(root: &PathBuf, args: &[&str]) -> String {
-    let output = Command::new(env!("CARGO_BIN_EXE_eva_runtime_with_task_validator"))
+    let output = evolution_test_support::eva_command(root)
         .args(args)
-        .current_dir(root)
         .output()
         .expect("run command");
     assert!(
@@ -277,9 +278,5 @@ fn run_ok(root: &PathBuf, args: &[&str]) -> String {
 }
 
 fn temp_dir(name: &str) -> PathBuf {
-    let millis = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("time")
-        .as_millis();
-    std::env::temp_dir().join(format!("{name}-{}-{millis}", std::process::id()))
+    evolution_test_support::unique_evolution_root(name)
 }

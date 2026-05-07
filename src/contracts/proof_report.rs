@@ -27,6 +27,22 @@ pub struct ProofReport {
     #[serde(default)]
     pub governance_runtime_support: bool,
     #[serde(default)]
+    pub release_runtime_support: bool,
+    #[serde(default)]
+    pub release_health_support: bool,
+    #[serde(default)]
+    pub artifact_audit_support: bool,
+    #[serde(default)]
+    pub determinism_audit_support: bool,
+    #[serde(default)]
+    pub preflight_gate_v2_support: bool,
+    #[serde(default)]
+    pub release_ledger_support: bool,
+    #[serde(default)]
+    pub future_phase_registry_support: bool,
+    #[serde(default)]
+    pub operator_runbook_support: bool,
+    #[serde(default)]
     pub auto_promote: bool,
     #[serde(default)]
     pub operator_approval_required: bool,
@@ -50,6 +66,12 @@ pub struct ProofReport {
     pub rejected_count: usize,
     #[serde(default)]
     pub deferred_count: usize,
+    #[serde(default)]
+    pub release_count: usize,
+    #[serde(default)]
+    pub release_ledger_count: usize,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub latest_release_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub latest_bounded_run_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

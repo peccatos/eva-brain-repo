@@ -53,3 +53,11 @@ memory/promotion_queue.ru.md
 memory/supervised_runs/
 memory/proof/
 memory/governance/
+memory/releases/
+memory/releases/bundles/
+memory/releases/manifests/
+memory/releases/rollback/
+memory/releases/changelogs/
+memory/releases/preflight/
+.eva-evolution-tests/
+.eva-runtime-tests/

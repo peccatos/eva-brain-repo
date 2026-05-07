@@ -16,7 +16,7 @@ fn runner_records_reproducible_case_and_mutation_attempt() {
     fs::create_dir_all(root.join("tests")).expect("tests dir");
     fs::write(
         root.join("Cargo.toml"),
-        "[package]\nname = \"demo_case\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+        "[package]\nname = \"demo_case\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[lib]\ndoctest = false\n",
     )
     .expect("cargo toml");
     fs::write(

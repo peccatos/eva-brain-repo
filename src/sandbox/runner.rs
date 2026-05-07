@@ -1,5 +1,6 @@
 use std::process::Command;
 use std::time::Instant;
+use std::{fs, path::Path};
 
 use crate::contracts::sandbox_result::CommandResult;
 use crate::sandbox::limits::{MAX_STDERR_BYTES, MAX_STDOUT_BYTES};
@@ -18,7 +19,13 @@ pub fn run_cargo_run(path: &str) -> CommandResult {
 
 fn run_command(path: &str, bin: &str, args: &[&str]) -> CommandResult {
     let start = Instant::now();
-    let output = Command::new(bin).args(args).current_dir(path).output();
+    let tmpdir = Path::new(path).join(".tmp");
+    let _ = fs::create_dir_all(&tmpdir);
+    let output = Command::new(bin)
+        .args(args)
+        .current_dir(path)
+        .env("TMPDIR", tmpdir)
+        .output();
     let duration_ms = start.elapsed().as_millis();
 
     match output {

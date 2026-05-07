@@ -1,13 +1,17 @@
+pub mod artifact_audit;
 pub mod autonomy;
 pub mod benchmark;
 pub mod bounded_loop;
 pub mod campaign;
 pub mod campaign_recombination;
+pub mod changelog;
 pub mod classification;
 pub mod corpus;
 pub mod corpus_validator;
 pub mod dedup;
+pub mod determinism_audit;
 pub mod evolution_policy;
+pub mod future_phase;
 pub mod generator;
 pub mod governance;
 pub mod hygiene;
@@ -18,14 +22,20 @@ pub mod metrics;
 pub mod mutation_portfolio;
 pub mod mutator;
 pub mod operator_approval;
+pub mod operator_runbook;
 pub mod patterns;
 pub mod policy_feedback;
+pub mod preflight_gate;
 pub mod promotion_queue;
 pub mod proof;
 pub mod proof_snapshot;
 pub mod quality;
 pub mod recombination;
 pub mod regression_memory;
+pub mod release_bundle;
+pub mod release_health;
+pub mod release_ledger;
+pub mod release_preflight;
 pub mod release_proposal;
 pub mod report_ru;
 pub mod rollback;
@@ -39,6 +49,7 @@ pub mod task_yield;
 pub mod templates;
 pub mod validator;
 
+pub use artifact_audit::{build_artifact_audit, print_artifact_audit, print_artifact_audit_json};
 pub use autonomy::{autonomy_status, AutonomyStatus};
 pub use benchmark::{
     count_sandbox_leaks, print_benchmark, run_benchmark, run_planned_cycles, EvolutionBenchmark,
@@ -68,9 +79,15 @@ pub use dedup::{
     compute_mutation_digest, load_dedup_entries, record_dedup_entry, should_reject_duplicate_bad,
     DedupEntry,
 };
+pub use determinism_audit::{
+    build_determinism_audit, print_determinism_audit, print_determinism_audit_json,
+};
 pub use evolution_policy::{
     load_or_refresh_evolution_policy, print_evolution_policy, refresh_evolution_policy,
     EvolutionPolicy,
+};
+pub use future_phase::{
+    build_future_phase_registry, print_future_phases, print_future_phases_json,
 };
 pub use generator::{
     generate_from_plan, generate_from_recombined_hypothesis, generate_safe_mutation,
@@ -98,8 +115,10 @@ pub use operator_approval::{
     approval_log, approval_status, approve_candidate, defer_candidate, latest_decisions,
     latest_record_for_run, record_promotion_event, reject_candidate,
 };
+pub use operator_runbook::print_operator_runbook;
 pub use patterns::{distill_patterns, DistilledPatternSummary};
 pub use policy_feedback::{load_policy_feedback, update_policy_feedback, PolicyFeedback};
+pub use preflight_gate::{build_preflight_gate, print_preflight_gate, print_preflight_gate_json};
 pub use promotion_queue::{
     candidate_lifecycle, load_or_refresh_promotion_queue, load_promotion_queue,
     print_promotion_queue, promotion_blocked_items, promotion_ready_items, refresh_promotion_queue,
@@ -117,6 +136,17 @@ pub use recombination::{
     load_recombined_hypotheses, render_recombined_hypotheses, top_recombined_hypothesis,
 };
 pub use regression_memory::{load_regressions, record_regression, RegressionEntry};
+pub use release_bundle::{
+    build_release_bundle, latest_release_id, list_releases, print_last_release,
+    print_release_bundle_json, print_release_changelog, print_release_manifest,
+    print_release_status, print_rollback_manifest, release_count,
+};
+pub use release_health::{build_release_health, print_release_health, print_release_health_json};
+pub use release_ledger::{
+    latest_release_or_none, load_release_ledger, print_record_release_attempt,
+    print_release_ledger, print_release_ledger_json, record_release_attempt, release_ledger_count,
+};
+pub use release_preflight::{build_release_preflight, print_release_preflight_json};
 pub use release_proposal::{
     build_release_proposal, print_release_proposal, print_release_proposal_json,
     release_proposal_count,
