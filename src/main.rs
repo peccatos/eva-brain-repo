@@ -1404,7 +1404,15 @@ fn main() {
                 eprintln!("replay_error: {err}");
                 std::process::exit(1);
             }
-            println!("replay_status: ok");
+
+            match read_replay_cli_status("memory", &run_id) {
+                Ok(status) => println!("replay_status: {status}"),
+                Err(err) => {
+                    eprintln!("replay_status_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+
             return;
         }
         Ok(RuntimeCliCommand::Promote(run_id)) => {
@@ -1482,6 +1490,25 @@ fn render_corpora_listing(memory_root: &str, corpora: &[String]) -> String {
         }
     }
     lines.join("\n")
+}
+
+#[derive(Debug, Deserialize)]
+struct ReplayCliStatus {
+    replay_status: String,
+}
+
+fn read_replay_cli_status(memory_root: &str, run_id: &str) -> Result<String, String> {
+    let path = Path::new(memory_root)
+        .join("replays")
+        .join(format!("{run_id}.json"));
+
+    let contents = fs::read_to_string(&path)
+        .map_err(|err| format!("failed to read replay result {}: {err}", path.display()))?;
+
+    let status: ReplayCliStatus = serde_json::from_str(&contents)
+        .map_err(|err| format!("failed to parse replay result {}: {err}", path.display()))?;
+
+    Ok(status.replay_status)
 }
 
 #[derive(Debug, Deserialize)]
