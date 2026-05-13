@@ -77,6 +77,7 @@ pub fn build_operator_console_report(
                 runtime_candidate.candidate_id,
                 runtime_candidate.planned_phases.len()
             ),
+            "phase15_visibility: tui=true metrics_truth=true candidate_queue_hygiene=true release_candidate_flow=true green_gate=true".to_string(),
             format!(
                 "future_phases: {}",
                 future
@@ -94,6 +95,7 @@ pub fn build_operator_console_report(
                 operations.next_safe_operator_action
             },
             "cargo run -- --runtime-candidate".to_string(),
+            "cargo run -- tui".to_string(),
             "cargo run -- --runtime-validation".to_string(),
             "cargo run -- --final-rc-report".to_string(),
             "cargo run -- --preflight-gate-v3".to_string(),

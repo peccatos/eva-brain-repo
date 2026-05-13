@@ -21,19 +21,20 @@ use eva_runtime_with_task_validator::{
     print_portfolio, print_preflight_gate, print_preflight_gate_json, print_preflight_gate_v3,
     print_promotion_queue, print_proof_json, print_proof_report, print_proof_snapshot,
     print_proof_snapshot_json, print_quality_report, print_record_release_attempt,
-    print_release_bundle_json, print_release_changelog, print_release_health,
-    print_release_health_json, print_release_ledger, print_release_ledger_json,
-    print_release_manifest, print_release_preflight_json, print_release_proposal,
-    print_release_proposal_json, print_release_status, print_report, print_rollback_manifest,
-    print_runtime_candidate, print_runtime_cli_contract, print_runtime_service,
-    print_runtime_validation, print_strategy_portfolio, print_supervised_run_report,
-    print_trust_decision, print_trust_proof_report, promote_approved_candidate, promote_candidate,
-    promotion_blocked_items, promotion_ready_approved, promotion_ready_items, refresh_metrics,
-    refresh_portfolio, refresh_promotion_queue, refresh_report, refresh_strategy_portfolio,
-    reject_candidate, render_plans, render_recombined_hypotheses, replay_candidate,
-    review_candidate, run_benchmark, run_bounded_evolution, run_demo, run_evolution_cycle,
-    run_planned_cycles, run_planned_evolution_cycle, run_recombined_evolution_cycle,
-    run_repo_patch_report, run_stored_campaign, run_task_from_path, serve_runtime_daemon,
+    print_release_approve, print_release_bundle_json, print_release_changelog,
+    print_release_health, print_release_health_json, print_release_ledger,
+    print_release_ledger_json, print_release_manifest, print_release_preflight_json,
+    print_release_proposal, print_release_proposal_json, print_release_status, print_report,
+    print_rollback_manifest, print_runtime_candidate, print_runtime_cli_contract,
+    print_runtime_service, print_runtime_validation, print_strategy_portfolio,
+    print_supervised_run_report, print_trust_decision, print_trust_proof_report,
+    promote_approved_candidate, promote_candidate, promotion_blocked_items,
+    promotion_ready_approved, promotion_ready_items, refresh_metrics, refresh_portfolio,
+    refresh_promotion_queue, refresh_report, refresh_strategy_portfolio, reject_candidate,
+    render_plans, render_recombined_hypotheses, replay_candidate, review_candidate, run_benchmark,
+    run_bounded_evolution, run_demo, run_evolution_cycle, run_planned_cycles,
+    run_planned_evolution_cycle, run_recombined_evolution_cycle, run_repo_patch_report,
+    run_stored_campaign, run_task_from_path, run_tui, serve_runtime_daemon,
     should_run_repo_patch_mode, suggest_strategy_tasks, supervise_task, CycleInput,
     RepoPatchCliConfig, RuntimeCliCommand, RuntimeCycleRunner, RUNTIME_CLI_HELP,
 };
@@ -66,6 +67,26 @@ fn main() {
             return;
         }
         Ok(RuntimeCliCommand::Once) => {}
+        Ok(RuntimeCliCommand::Tui) => {
+            match run_tui(".", "memory") {
+                Ok(output) => println!("{output}"),
+                Err(err) => {
+                    eprintln!("tui_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        Ok(RuntimeCliCommand::Status) => {
+            match print_runtime_validation(".", "memory") {
+                Ok(output) => println!("{output}"),
+                Err(err) => {
+                    eprintln!("status_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
         Ok(RuntimeCliCommand::Evolve) => {
             if let Err(err) = run_evolution_cycle(".") {
                 eprintln!("evolution_cycle_error: {err}");
@@ -855,6 +876,16 @@ fn main() {
             }
             return;
         }
+        Ok(RuntimeCliCommand::ReleaseApprove(run_id)) => {
+            match print_release_approve(".", "memory", &run_id) {
+                Ok(report) => println!("{report}"),
+                Err(err) => {
+                    eprintln!("release_approve_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
         Ok(RuntimeCliCommand::ReleaseManifest(release_id)) => {
             match print_release_manifest("memory", &release_id) {
                 Ok(report) => println!("{report}"),
@@ -1404,7 +1435,15 @@ fn main() {
                 eprintln!("replay_error: {err}");
                 std::process::exit(1);
             }
-            println!("replay_status: ok");
+
+            match read_replay_cli_status("memory", &run_id) {
+                Ok(status) => println!("replay_status: {status}"),
+                Err(err) => {
+                    eprintln!("replay_status_error: {err}");
+                    std::process::exit(1);
+                }
+            }
+
             return;
         }
         Ok(RuntimeCliCommand::Promote(run_id)) => {
@@ -1482,6 +1521,45 @@ fn render_corpora_listing(memory_root: &str, corpora: &[String]) -> String {
         }
     }
     lines.join("\n")
+}
+
+#[derive(Debug, Deserialize)]
+struct ReplayCliStatus {
+    replay_status: eva_runtime_with_task_validator::EvolutionStatus,
+    matches_stored_summary: bool,
+    cargo_check_ok: bool,
+    cargo_test_ok: bool,
+    cargo_run_ok: bool,
+}
+
+fn read_replay_cli_status(memory_root: &str, run_id: &str) -> Result<String, String> {
+    let path = Path::new(memory_root)
+        .join("replays")
+        .join(format!("{run_id}.json"));
+
+    let contents = fs::read_to_string(&path)
+        .map_err(|err| format!("failed to read replay result {}: {err}", path.display()))?;
+
+    let status: ReplayCliStatus = serde_json::from_str(&contents)
+        .map_err(|err| format!("failed to parse replay result {}: {err}", path.display()))?;
+
+    if status.matches_stored_summary
+        && status.replay_status != eva_runtime_with_task_validator::EvolutionStatus::Failed
+        && status.cargo_check_ok
+        && status.cargo_test_ok
+        && status.cargo_run_ok
+    {
+        Ok("passed".to_string())
+    } else if status.replay_status == eva_runtime_with_task_validator::EvolutionStatus::Failed
+        || !status.matches_stored_summary
+        || !status.cargo_check_ok
+        || !status.cargo_test_ok
+        || !status.cargo_run_ok
+    {
+        Ok("failed".to_string())
+    } else {
+        Ok("unknown".to_string())
+    }
 }
 
 #[derive(Debug, Deserialize)]

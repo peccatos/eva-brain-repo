@@ -123,3 +123,33 @@ cargo run --bin benchmark_batch
 
 Будущий origin:
 - `https://github.com/peccatos/eva-brain-repo`
+# EVA Operator Runtime
+
+Read-only operator dashboard:
+
+```bash
+cargo run -- tui
+```
+
+Current runtime validation:
+
+```bash
+cargo run -- status
+```
+
+Phase 15.1H to 15.7X plus the 16.0P readiness scaffold focuses on visibility, truthful metrics, candidate queue hygiene, governed release-candidate metadata, and the honest green gate. See:
+
+- `docs/runtime_tui.md`
+- `docs/metrics_semantics.md`
+- `docs/candidate_queue.md`
+- `docs/release_candidate_flow.md`
+- `docs/phase_15x_status.md`
+- `docs/phase_16_evolution_core_readiness.md`
+
+Current compressed path:
+
+- `15.1H` TUI hydration truth
+- `15.2R` truthful metrics and queue display
+- `15.6X` first governed release-candidate path
+- `15.7X` green gate attempt
+- `16.0P` readiness scaffold only, without evolution-core activation

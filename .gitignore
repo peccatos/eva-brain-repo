@@ -61,6 +61,7 @@ memory/runtime_candidates/
 memory/runtime_validation/
 memory/runtime_service/
 memory/final_rc/
+memory/release_candidates/
 memory/releases/
 memory/releases/bundles/
 memory/releases/manifests/

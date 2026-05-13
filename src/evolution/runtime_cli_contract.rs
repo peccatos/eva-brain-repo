@@ -85,6 +85,16 @@ pub fn build_runtime_cli_contract(memory_root: &str) -> Result<RuntimeCliContrac
                 "metadata_only",
             ),
             entry(
+                "tui / --tui",
+                "Open read-only operator terminal dashboard",
+                "read_only",
+            ),
+            entry(
+                "status / --status",
+                "Print runtime validation status",
+                "validation_only",
+            ),
+            entry(
                 "--runtime-candidate",
                 "Build runtime v1.0 candidate manifest",
                 "metadata_only",
@@ -103,6 +113,11 @@ pub fn build_runtime_cli_contract(memory_root: &str) -> Result<RuntimeCliContrac
                 "--runtime-cli-contract",
                 "Print stable runtime CLI contract",
                 "metadata_only",
+            ),
+            entry(
+                "--release-approve <RUN_ID>",
+                "Approve a ready replay-ok candidate for release metadata",
+                "blocked_if_untrusted",
             ),
             entry(
                 "--final-rc-report",

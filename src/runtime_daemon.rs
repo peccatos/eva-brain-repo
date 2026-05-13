@@ -23,6 +23,13 @@ pub const RUNTIME_CLI_HELP: &str = r#"EVA runtime commands:
   cargo run -- --once
       Run one local deterministic runtime cycle and print JSON.
 
+  cargo run -- tui
+  cargo run -- --tui
+      Open the read-only EVA operator TUI. In non-interactive mode, print one dashboard snapshot.
+
+  cargo run -- status
+      Print the current runtime validation status.
+
   cargo run -- --evolve
       Run one bounded self-evolution cycle in a disposable sandbox.
 
@@ -239,6 +246,9 @@ pub const RUNTIME_CLI_HELP: &str = r#"EVA runtime commands:
   cargo run -- --release-bundle <RUN_ID>
       Build a deterministic local release bundle for a safe approved candidate.
 
+  cargo run -- --release-approve <RUN_ID>
+      Operator-approve a ready replay-ok candidate for release metadata.
+
   cargo run -- --release-manifest <RELEASE_ID>
       Print a stored release manifest JSON.
 
@@ -418,6 +428,8 @@ pub const RUNTIME_CLI_HELP: &str = r#"EVA runtime commands:
 pub enum RuntimeCliCommand {
     Help,
     Once,
+    Tui,
+    Status,
     Evolve,
     PlanEvolution,
     EvolvePlanned,
@@ -501,6 +513,7 @@ pub enum RuntimeCliCommand {
     PromoteApproved(String),
     ReleasePreflight(String),
     ReleaseBundle(String),
+    ReleaseApprove(String),
     ReleaseManifest(String),
     ReleaseChangelog(String),
     RollbackManifest(String),
@@ -650,6 +663,12 @@ impl RuntimeCliCommand {
         }
         if raw_args == ["--once"] {
             return Ok(Self::Once);
+        }
+        if raw_args == ["tui"] || raw_args == ["--tui"] {
+            return Ok(Self::Tui);
+        }
+        if raw_args == ["status"] || raw_args == ["--status"] {
+            return Ok(Self::Status);
         }
         if raw_args == ["--evolve"] {
             return Ok(Self::Evolve);
@@ -914,6 +933,9 @@ impl RuntimeCliCommand {
         }
         if raw_args.len() == 2 && raw_args[0] == "--release-bundle" {
             return Ok(Self::ReleaseBundle(raw_args[1].clone()));
+        }
+        if raw_args.len() == 2 && raw_args[0] == "--release-approve" {
+            return Ok(Self::ReleaseApprove(raw_args[1].clone()));
         }
         if raw_args.len() == 2 && raw_args[0] == "--release-manifest" {
             return Ok(Self::ReleaseManifest(raw_args[1].clone()));

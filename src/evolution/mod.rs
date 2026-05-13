@@ -13,6 +13,7 @@ pub mod corpus_validator;
 pub mod dedup;
 pub mod determinism_audit;
 pub mod evidence_bundle;
+pub mod evolution_core_readiness;
 pub mod evolution_policy;
 pub mod external_patch;
 pub mod final_rc_report;
@@ -42,6 +43,7 @@ pub mod recombination;
 pub mod recovery_manifest;
 pub mod regression_memory;
 pub mod release_bundle;
+pub mod release_candidate;
 pub mod release_health;
 pub mod release_ledger;
 pub mod release_preflight;
@@ -105,6 +107,7 @@ pub use evidence_bundle::{
     build_evidence_bundle, latest_evidence_bundle_id, list_evidence_bundles,
     print_last_evidence_bundle,
 };
+pub use evolution_core_readiness::build_evolution_core_readiness;
 pub use evolution_policy::{
     load_or_refresh_evolution_policy, print_evolution_policy, refresh_evolution_policy,
     EvolutionPolicy,
@@ -130,7 +133,8 @@ pub use hypothesis::{rank_plans, EvolutionHypothesis};
 pub use learning_context::LearningContext;
 pub use memory::{record_evolution, CandidateSummary, ReplayResult};
 pub use metrics::{
-    learning_summary, load_metrics, refresh_metrics, update_metrics_after_log, EvolutionMetrics,
+    classify_run_outcome, learning_summary, load_metrics, load_metrics_snapshot, refresh_metrics,
+    update_metrics_after_log, EvolutionMetrics, EvolutionRunOutcome,
 };
 pub use mutation_portfolio::{
     ensure_portfolio, kind_label as portfolio_kind_label, load_portfolio, print_portfolio,
@@ -175,6 +179,9 @@ pub use release_bundle::{
     print_release_bundle_json, print_release_changelog, print_release_manifest,
     print_release_status, print_rollback_manifest, release_count,
 };
+pub use release_candidate::{
+    approve_release_candidate, build_release_candidate_state, print_release_approve,
+};
 pub use release_health::{build_release_health, print_release_health, print_release_health_json};
 pub use release_ledger::{
     latest_release_or_none, load_release_ledger, print_record_release_attempt,
@@ -195,7 +202,8 @@ pub use runtime_candidate::{
 pub use runtime_cli_contract::{build_runtime_cli_contract, print_runtime_cli_contract};
 pub use runtime_service::{build_runtime_service_metadata, print_runtime_service};
 pub use runtime_validation::{
-    build_runtime_validation, evaluate_runtime_validation, print_runtime_validation,
+    build_runtime_validation, evaluate_runtime_validation, load_latest_runtime_validation,
+    load_or_build_runtime_validation, print_runtime_validation,
 };
 pub use scorer::{score_cycle, EvolutionScore};
 pub use self_review::{

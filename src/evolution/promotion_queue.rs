@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::Path;
 
-use crate::contracts::{PromotionQueue, PromotionQueueItem};
+use crate::contracts::{CandidateQueueSummary, CandidateState, PromotionQueue, PromotionQueueItem};
 use crate::evolution::{
     classify_mutation_kind_label, load_report_json, memory, mutation_class_label, refresh_metrics,
     refresh_report,
@@ -20,6 +20,7 @@ pub fn refresh_promotion_queue(
         .collect::<Result<Vec<_>, _>>()?;
     items.sort_by(|left, right| left.run_id.cmp(&right.run_id));
     let queue = PromotionQueue {
+        summary: summarize_queue(&items),
         items,
         generated_at: memory::now_unix(),
     };
@@ -153,6 +154,13 @@ fn build_queue_item(
         promotion_allowed,
         rebuilt_report_exists,
     );
+    let (candidate_state, candidate_state_reason) = classify_candidate_state(
+        summary,
+        &mutation_class,
+        &replay_status,
+        &promotion_blockers,
+        rebuilt_report_exists,
+    );
 
     Ok(PromotionQueueItem {
         run_id: summary.run_id.clone(),
@@ -167,9 +175,123 @@ fn build_queue_item(
         promotion_blockers,
         report_path: report_path.display().to_string(),
         lifecycle_state,
+        candidate_state,
+        candidate_state_reason,
+        cargo_test_ok: Some(summary.cargo_test_ok),
+        cargo_run_ok: Some(summary.cargo_run_ok),
+        duplicate_rejected: summary.duplicate_rejected,
+        promoted: summary.status == crate::contracts::EvolutionStatus::Promoted,
         reason_ru,
         updated_at: memory::now_unix(),
     })
+}
+
+fn classify_candidate_state(
+    summary: &memory::CandidateSummary,
+    mutation_class: &str,
+    replay_status: &str,
+    promotion_blockers: &[String],
+    report_exists: bool,
+) -> (CandidateState, String) {
+    if summary.duplicate_rejected {
+        return (
+            CandidateState::Duplicate,
+            "duplicate safety rejection".to_string(),
+        );
+    }
+    if !report_exists {
+        return (
+            CandidateState::Stale,
+            "candidate report missing or not rebuildable".to_string(),
+        );
+    }
+    if promotion_blockers.iter().any(|blocker| {
+        matches!(
+            blocker.as_str(),
+            "candidate_missing" | "mutation_missing" | "report_missing"
+        )
+    }) {
+        return (
+            CandidateState::Blocked,
+            "required candidate evidence is missing".to_string(),
+        );
+    }
+    if mutation_class == "legacy" || mutation_class.is_empty() {
+        return (
+            CandidateState::Legacy,
+            "legacy candidate cannot be replayed with full trust".to_string(),
+        );
+    }
+    if mutation_class == "unsafe" || mutation_class == "cosmetic" {
+        return (
+            CandidateState::Quarantined,
+            format!("{mutation_class} mutation is isolated from promotion"),
+        );
+    }
+    if promotion_blockers
+        .iter()
+        .any(|blocker| blocker == "already_promoted")
+    {
+        return (
+            CandidateState::AlreadyPromoted,
+            "candidate already promoted".to_string(),
+        );
+    }
+    if replay_status != "ok" && replay_status != "not_run" {
+        return (
+            CandidateState::Unreplayable,
+            format!("replay status is {replay_status}"),
+        );
+    }
+    if !summary.cargo_test_ok || !summary.cargo_run_ok {
+        return (
+            CandidateState::Quarantined,
+            "cargo test/run gate did not pass".to_string(),
+        );
+    }
+    if promotion_blockers
+        .iter()
+        .any(|blocker| blocker == "forbidden_target")
+    {
+        return (
+            CandidateState::Blocked,
+            "forbidden target blocker".to_string(),
+        );
+    }
+    if replay_status == "ok" && summary.useful_change && promotion_blockers.is_empty() {
+        return (
+            CandidateState::Ready,
+            "all required gates passed".to_string(),
+        );
+    }
+    if !promotion_blockers.is_empty() {
+        return (CandidateState::Blocked, promotion_blockers.join(", "));
+    }
+    (
+        CandidateState::Unknown,
+        "candidate state could not be determined".to_string(),
+    )
+}
+
+fn summarize_queue(items: &[PromotionQueueItem]) -> CandidateQueueSummary {
+    let mut summary = CandidateQueueSummary {
+        candidate_count: items.len(),
+        ..CandidateQueueSummary::default()
+    };
+    for item in items {
+        match item.candidate_state {
+            CandidateState::Ready => summary.ready_candidates += 1,
+            CandidateState::Blocked => summary.blocked_candidates += 1,
+            CandidateState::Quarantined => summary.quarantined_candidates += 1,
+            CandidateState::Stale => summary.blocked_candidates += 1,
+            CandidateState::Legacy => summary.legacy_candidates += 1,
+            CandidateState::Duplicate => summary.duplicate_candidates += 1,
+            CandidateState::Unreplayable => summary.unreplayable_candidates += 1,
+            CandidateState::AlreadyPromoted => summary.already_promoted_candidates += 1,
+            CandidateState::Unknown => summary.unknown_candidates += 1,
+        }
+    }
+    summary
 }
 
 fn classify_lifecycle(
@@ -272,11 +394,7 @@ fn write_promotion_queue(memory_root: &str, queue: &PromotionQueue) -> Result<()
 }
 
 fn render_promotion_queue_markdown(queue: &PromotionQueue) -> String {
-    let ready = queue
-        .items
-        .iter()
-        .filter(|item| item.lifecycle_state == "ready")
-        .count();
+    let ready = queue.summary.ready_candidates;
     let blocked = queue.items.len().saturating_sub(ready);
     let lines = if queue.items.is_empty() {
         "(none)".to_string()
@@ -286,12 +404,13 @@ fn render_promotion_queue_markdown(queue: &PromotionQueue) -> String {
             .iter()
             .map(|item| {
                 format!(
-                    "- {} kind={} class={} replay={} lifecycle={} allowed={} target={} reason={}",
+                    "- {} kind={} class={} replay={} lifecycle={} state={:?} allowed={} target={} reason={}",
                     item.run_id,
                     item.mutation_kind,
                     item.mutation_class,
                     item.replay_status,
                     item.lifecycle_state,
+                    item.candidate_state,
                     item.promotion_allowed,
                     item.target_file,
                     item.reason_ru
@@ -301,10 +420,16 @@ fn render_promotion_queue_markdown(queue: &PromotionQueue) -> String {
             .join("\n")
     };
     format!(
-        "# Promotion Queue EVA\n\nitems={}\nready={}\nblocked={}\n\n{}\n",
+        "# Promotion Queue EVA\n\nitems={}\nready={}\nblocked={}\nquarantined={}\nlegacy={}\nduplicate={}\nunreplayable={}\nalready_promoted={}\nunknown={}\n\n{}\n",
         queue.items.len(),
         ready,
         blocked,
+        queue.summary.quarantined_candidates,
+        queue.summary.legacy_candidates,
+        queue.summary.duplicate_candidates,
+        queue.summary.unreplayable_candidates,
+        queue.summary.already_promoted_candidates,
+        queue.summary.unknown_candidates,
         lines
     )
 }

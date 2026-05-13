@@ -12,21 +12,70 @@ pub const EVA_CANDIDATE_DIR: &str = "memory/candidates";
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct EvolutionMetrics {
+    #[serde(default)]
     pub total_runs: u64,
+    #[serde(default)]
     pub passed_runs: u64,
+    #[serde(default)]
     pub failed_runs: u64,
+    #[serde(default)]
+    pub real_execution_failed_runs: u64,
+    #[serde(default)]
+    pub cargo_gate_failed_runs: u64,
+    #[serde(default)]
+    pub replay_failed_runs: u64,
+    #[serde(default)]
+    pub safety_rejected_runs: u64,
+    #[serde(default)]
+    pub duplicate_rejected_runs: u64,
+    #[serde(default)]
+    pub cosmetic_rejected_runs: u64,
+    #[serde(default)]
+    pub already_promoted_runs: u64,
+    #[serde(default)]
+    pub policy_rejected_runs: u64,
+    #[serde(default)]
+    pub unknown_runs: u64,
+    #[serde(default)]
     pub candidate_count: u64,
+    #[serde(default)]
     pub replay_passed: u64,
+    #[serde(default)]
+    pub replay_failed: u64,
+    #[serde(default)]
     pub promoted_count: u64,
+    #[serde(default)]
     pub average_score: f32,
+    #[serde(default)]
+    pub pass_ratio: f32,
+    #[serde(default)]
+    pub effective_failure_ratio: f32,
+    #[serde(default)]
+    pub safety_rejection_ratio: f32,
+    #[serde(default)]
     pub last_run_id: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EvolutionRunOutcome {
+    Passed,
+    RealExecutionFailure,
+    CargoGateFailure,
+    ReplayFailure,
+    DuplicateSafetyRejection,
+    CosmeticRejection,
+    AlreadyPromoted,
+    PolicyRejection,
+    BlockedByOperator,
+    Unknown,
 }
 
 pub fn load_metrics(memory_root: &str) -> Result<EvolutionMetrics, String> {
     refresh_metrics(memory_root)
 }
 
-fn load_cached_metrics(memory_root: &str) -> Result<EvolutionMetrics, String> {
+pub fn load_metrics_snapshot(memory_root: &str) -> Result<EvolutionMetrics, String> {
     let path = Path::new(memory_root).join("metrics.json");
     if !path.exists() {
         return Ok(EvolutionMetrics::default());
@@ -40,23 +89,19 @@ pub fn update_metrics_after_log(
     memory_root: &str,
     entry: &EvolutionLogEntry,
 ) -> Result<EvolutionMetrics, String> {
-    let mut metrics = load_cached_metrics(memory_root)?;
+    let mut metrics = load_metrics_snapshot(memory_root)?;
     let previous_total = metrics.total_runs;
     metrics.total_runs += 1;
-    match entry.status {
-        EvolutionStatus::Failed => metrics.failed_runs += 1,
-        EvolutionStatus::Candidate => {
-            metrics.passed_runs += 1;
-            metrics.candidate_count += 1;
-        }
-        EvolutionStatus::Promoted => {
-            metrics.passed_runs += 1;
-            metrics.promoted_count += 1;
-        }
-        EvolutionStatus::Passed => metrics.passed_runs += 1,
+    apply_outcome_counts(&mut metrics, classify_run_outcome(entry));
+    if entry.status == EvolutionStatus::Candidate {
+        metrics.candidate_count += 1;
+    }
+    if entry.status == EvolutionStatus::Promoted || entry.retained_in_core {
+        metrics.promoted_count += 1;
     }
     metrics.average_score =
         ((metrics.average_score * previous_total as f32) + entry.score) / metrics.total_runs as f32;
+    recompute_ratios(&mut metrics);
     metrics.last_run_id = Some(entry.run_id.clone());
     write_metrics(memory_root, &metrics)?;
     Ok(metrics)
@@ -66,10 +111,15 @@ pub fn update_metrics_after_replay(
     memory_root: &str,
     replay: &ReplayResult,
 ) -> Result<EvolutionMetrics, String> {
-    let mut metrics = load_cached_metrics(memory_root)?;
-    if replay.matches_stored_summary && replay.cargo_check_ok && replay.cargo_test_ok {
+    let mut metrics = load_metrics_snapshot(memory_root)?;
+    if replay_is_ok(replay) {
         metrics.replay_passed += 1;
+    } else {
+        metrics.replay_failed += 1;
+        metrics.replay_failed_runs += 1;
+        metrics.failed_runs += 1;
     }
+    recompute_ratios(&mut metrics);
     write_metrics(memory_root, &metrics)?;
     Ok(metrics)
 }
@@ -79,21 +129,18 @@ pub fn refresh_metrics(memory_root: &str) -> Result<EvolutionMetrics, String> {
     let summaries = memory::list_candidate_summaries(memory_root)?;
     let replays = load_replays(memory_root)?;
 
-    let total_runs = logs.len() as u64;
-    let passed_runs = logs
-        .iter()
-        .filter(|entry| entry.status != EvolutionStatus::Failed)
-        .count() as u64;
-    let failed_runs = logs
-        .iter()
-        .filter(|entry| entry.status == EvolutionStatus::Failed)
-        .count() as u64;
+    let mut metrics = EvolutionMetrics {
+        total_runs: logs.len() as u64,
+        ..EvolutionMetrics::default()
+    };
+    for entry in &logs {
+        apply_outcome_counts(&mut metrics, classify_run_outcome(entry));
+    }
     let candidate_count = summaries.len() as u64;
-    let replay_passed = replays
+    let replay_passed = replays.iter().filter(|replay| replay_is_ok(replay)).count() as u64;
+    let replay_failed = replays
         .iter()
-        .filter(|replay| {
-            replay.matches_stored_summary && replay.replay_status != EvolutionStatus::Failed
-        })
+        .filter(|replay| !replay_is_ok(replay))
         .count() as u64;
     let promoted_count = logs.iter().filter(|entry| entry.retained_in_core).count() as u64;
     let average_score = if logs.is_empty() {
@@ -102,18 +149,138 @@ pub fn refresh_metrics(memory_root: &str) -> Result<EvolutionMetrics, String> {
         logs.iter().map(|entry| entry.score).sum::<f32>() / logs.len() as f32
     };
     let last_run_id = logs.last().map(|entry| entry.run_id.clone());
+    metrics.candidate_count = candidate_count;
+    metrics.replay_passed = replay_passed;
+    metrics.replay_failed = replay_failed;
+    metrics.replay_failed_runs = replay_failed;
+    metrics.failed_runs += replay_failed;
+    metrics.promoted_count = promoted_count;
+    metrics.average_score = average_score;
+    metrics.last_run_id = last_run_id.clone();
+    recompute_ratios(&mut metrics);
     let metrics = EvolutionMetrics {
-        total_runs,
-        passed_runs,
-        failed_runs,
+        total_runs: metrics.total_runs,
+        passed_runs: metrics.passed_runs,
+        failed_runs: metrics.failed_runs,
+        real_execution_failed_runs: metrics.real_execution_failed_runs,
+        cargo_gate_failed_runs: metrics.cargo_gate_failed_runs,
+        replay_failed_runs: metrics.replay_failed_runs,
+        safety_rejected_runs: metrics.safety_rejected_runs,
+        duplicate_rejected_runs: metrics.duplicate_rejected_runs,
+        cosmetic_rejected_runs: metrics.cosmetic_rejected_runs,
+        already_promoted_runs: metrics.already_promoted_runs,
+        policy_rejected_runs: metrics.policy_rejected_runs,
+        unknown_runs: metrics.unknown_runs,
         candidate_count,
         replay_passed,
+        replay_failed,
         promoted_count,
         average_score,
+        pass_ratio: metrics.pass_ratio,
+        effective_failure_ratio: metrics.effective_failure_ratio,
+        safety_rejection_ratio: metrics.safety_rejection_ratio,
         last_run_id,
     };
     write_metrics(memory_root, &metrics)?;
     Ok(metrics)
+}
+
+pub fn classify_run_outcome(entry: &EvolutionLogEntry) -> EvolutionRunOutcome {
+    if entry.duplicate_rejected {
+        return EvolutionRunOutcome::DuplicateSafetyRejection;
+    }
+    if entry.retained_in_core || entry.status == EvolutionStatus::Promoted {
+        return EvolutionRunOutcome::AlreadyPromoted;
+    }
+    if matches!(
+        entry.status,
+        EvolutionStatus::Passed | EvolutionStatus::Candidate
+    ) {
+        return EvolutionRunOutcome::Passed;
+    }
+    if entry.mutation_class == "cosmetic"
+        || entry.non_candidate_reason.as_deref() == Some("cosmetic_mutation")
+        || entry.mutation_kind == "appendcomment"
+    {
+        return EvolutionRunOutcome::CosmeticRejection;
+    }
+    if matches!(
+        entry.non_candidate_reason.as_deref(),
+        Some("policy_rejection")
+            | Some("task_constraints_too_narrow")
+            | Some("allowed_targets_filtered_all")
+            | Some("allowed_kinds_filtered_all")
+            | Some("blocked_by_policy")
+    ) {
+        return EvolutionRunOutcome::PolicyRejection;
+    }
+    if entry.status == EvolutionStatus::Failed {
+        if !entry.cargo_check_ok || !entry.cargo_test_ok || !entry.cargo_run_ok {
+            return EvolutionRunOutcome::CargoGateFailure;
+        }
+        if entry.non_candidate_reason.as_deref() == Some("blocked_by_operator") {
+            return EvolutionRunOutcome::BlockedByOperator;
+        }
+        if entry.non_candidate_reason.as_deref() == Some("unknown") {
+            return EvolutionRunOutcome::Unknown;
+        }
+        return EvolutionRunOutcome::RealExecutionFailure;
+    }
+    EvolutionRunOutcome::Unknown
+}
+
+pub fn apply_outcome_counts(metrics: &mut EvolutionMetrics, outcome: EvolutionRunOutcome) {
+    match outcome {
+        EvolutionRunOutcome::Passed => metrics.passed_runs += 1,
+        EvolutionRunOutcome::RealExecutionFailure => {
+            metrics.failed_runs += 1;
+            metrics.real_execution_failed_runs += 1;
+        }
+        EvolutionRunOutcome::CargoGateFailure => {
+            metrics.failed_runs += 1;
+            metrics.cargo_gate_failed_runs += 1;
+        }
+        EvolutionRunOutcome::ReplayFailure => {
+            metrics.failed_runs += 1;
+            metrics.replay_failed_runs += 1;
+        }
+        EvolutionRunOutcome::DuplicateSafetyRejection => {
+            metrics.safety_rejected_runs += 1;
+            metrics.duplicate_rejected_runs += 1;
+        }
+        EvolutionRunOutcome::CosmeticRejection => {
+            metrics.safety_rejected_runs += 1;
+            metrics.cosmetic_rejected_runs += 1;
+        }
+        EvolutionRunOutcome::AlreadyPromoted => metrics.already_promoted_runs += 1,
+        EvolutionRunOutcome::PolicyRejection => {
+            metrics.safety_rejected_runs += 1;
+            metrics.policy_rejected_runs += 1;
+        }
+        EvolutionRunOutcome::BlockedByOperator => metrics.policy_rejected_runs += 1,
+        EvolutionRunOutcome::Unknown => metrics.unknown_runs += 1,
+    }
+}
+
+fn replay_is_ok(replay: &ReplayResult) -> bool {
+    replay.matches_stored_summary
+        && replay.replay_status != EvolutionStatus::Failed
+        && replay.cargo_check_ok
+        && replay.cargo_test_ok
+        && replay.cargo_run_ok
+}
+
+fn recompute_ratios(metrics: &mut EvolutionMetrics) {
+    if metrics.total_runs == 0 {
+        metrics.pass_ratio = 0.0;
+        metrics.effective_failure_ratio = 0.0;
+        metrics.safety_rejection_ratio = 0.0;
+        return;
+    }
+    metrics.pass_ratio = metrics.passed_runs as f32 / metrics.total_runs as f32;
+    metrics.effective_failure_ratio = metrics.failed_runs as f32 / metrics.total_runs as f32;
+    metrics.safety_rejection_ratio =
+        metrics.safety_rejected_runs as f32 / metrics.total_runs as f32;
 }
 
 pub fn learning_summary(memory_root: &str) -> Result<String, String> {

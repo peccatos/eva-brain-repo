@@ -90,8 +90,10 @@ pub fn build_runtime_candidate_manifest(
             || gate_v3.status == "warn"
         {
             "warn".to_string()
-        } else {
+        } else if validation.status == "green" {
             "pass".to_string()
+        } else {
+            "warn".to_string()
         },
     };
     memory::write_json(

@@ -65,7 +65,7 @@ fn render_final_rc_markdown(
     cli_commands: usize,
 ) -> String {
     format!(
-        "# EVA Runtime v1.0 Candidate Report\n\nRC status: {}\nCurrent branch/head: {} / {}\nCompleted phases: {}\nPlanned phases: {}\n\n## Safety state\n- auto_promote=false\n- operator approval required=true\n- no network push\n- no merge\n- no self-apply\n- no external repo mutation\n- sandbox_leak_count={}\n\n## Runtime service metadata\n- service_name={}\n- mode={}\n- daemonized={}\n- attach_supported={}\n- watch_supported={}\n- status_supported={}\n- network_required={}\n- network_push_allowed={}\n- external_side_effects={}\n\n## CLI contract summary\n- commands={}\n- metadata_only=true\n\n## Trust and recovery state\n- trust={}\n- preflight_gate_v3={}\n- latest_evidence_bundle_id={}\n- latest_workspace_snapshot_id={}\n- latest_recovery_manifest_id={}\n\n## Release and operations state\n- release={}\n- operations={}\n- ready_candidates={}\n- approved_count={}\n- blocked_candidates={}\n\n## Validation state\n- status={}\n- blockers={}\n- warnings={}\n\n## Next operator commands\n{}\n",
+        "# EVA Runtime v1.0 Candidate Report\n\nRC status: {}\nCurrent branch/head: {} / {}\nCompleted phases: {}\nPlanned phases: {}\n\n## Safety state\n- auto_promote=false\n- operator approval required=true\n- no network push\n- no merge\n- no self-apply\n- no external repo mutation\n- sandbox_leak_count={}\n\n## Runtime service metadata\n- service_name={}\n- mode={}\n- daemonized={}\n- attach_supported={}\n- watch_supported={}\n- status_supported={}\n- network_required={}\n- network_push_allowed={}\n- external_side_effects={}\n\n## CLI contract summary\n- commands={}\n- metadata_only=true\n\n## Trust and recovery state\n- trust={}\n- preflight_gate_v3={}\n- latest_evidence_bundle_id={}\n- latest_workspace_snapshot_id={}\n- latest_recovery_manifest_id={}\n\n## Release and operations state\n- release={}\n- operations={}\n- ready_candidates={}\n- approved_count={}\n- blocked_candidates={}\n\n## Validation state\n- status={}\n- blockers={}\n- warnings={}\n- green_conditions={}\n- missing_green_conditions={}\n- metrics_summary={}\n- candidate_queue_summary={}\n- sandbox_state={}\n\n## Next operator commands\n{}\n",
         candidate.rc_status,
         candidate.git_branch,
         candidate.git_head,
@@ -117,6 +117,19 @@ fn render_final_rc_markdown(
         } else {
             validation.warnings.join(", ")
         },
+        if validation.green_conditions.is_empty() {
+            "none".to_string()
+        } else {
+            validation.green_conditions.join(", ")
+        },
+        if validation.missing_green_conditions.is_empty() {
+            "none".to_string()
+        } else {
+            validation.missing_green_conditions.join(", ")
+        },
+        validation.metrics_summary.as_str(),
+        validation.candidate_queue_summary.as_str(),
+        validation.sandbox_state.as_str(),
         validation
             .next_actions
             .iter()
