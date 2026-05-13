@@ -1,3 +1,4 @@
+use eva_runtime_with_task_validator::llm::llm_health;
 use eva_runtime_with_task_validator::{
     adjust_task_from_campaign, approval_log, approval_status, approve_candidate, autonomy_status,
     build_evidence_bundle, build_external_patch_package, build_pr_package,
@@ -9,32 +10,35 @@ use eva_runtime_with_task_validator::{
     list_external_patch_packages, list_pr_packages, list_recovery_manifests, list_releases,
     list_self_review_packages, list_suggested_tasks, list_supervised_runs,
     list_workspace_snapshots, load_corpus_summary, load_metrics, preview_campaign_recombination,
+    print_agent_readiness, print_agent_report, print_apply_proposal, print_approve_proposal,
     print_artifact_audit, print_artifact_audit_json, print_benchmark, print_bounded_run_report,
-    print_campaign, print_campaign_report, print_capability_policy, print_determinism_audit,
-    print_determinism_audit_json, print_eva_status, print_evolution_policy, print_final_rc_report,
-    print_future_phases, print_future_phases_json, print_hygiene_plan, print_hygiene_report,
-    print_last_bounded_run, print_last_campaign_report, print_last_evidence_bundle,
-    print_last_external_patch_package, print_last_pr_package, print_last_recovery_manifest,
-    print_last_release, print_last_report, print_last_self_review_package,
-    print_last_supervised_run, print_last_task_adjustment, print_last_workspace_snapshot,
-    print_operator_console, print_operator_runbook, print_ops_json, print_ops_status,
-    print_portfolio, print_preflight_gate, print_preflight_gate_json, print_preflight_gate_v3,
+    print_campaign, print_campaign_report, print_capability_policy, print_create_task,
+    print_determinism_audit, print_determinism_audit_json, print_eva_status,
+    print_evolution_policy, print_final_rc_report, print_future_phases, print_future_phases_json,
+    print_hygiene_plan, print_hygiene_report, print_last_bounded_run, print_last_campaign_report,
+    print_last_evidence_bundle, print_last_external_patch_package, print_last_pr_package,
+    print_last_recovery_manifest, print_last_release, print_last_report,
+    print_last_self_review_package, print_last_supervised_run, print_last_task_adjustment,
+    print_last_workspace_snapshot, print_operator_console, print_operator_runbook, print_ops_json,
+    print_ops_status, print_plan_task, print_portfolio, print_pr_summary_for_task,
+    print_preflight_gate, print_preflight_gate_json, print_preflight_gate_v3,
     print_promotion_queue, print_proof_json, print_proof_report, print_proof_snapshot,
-    print_proof_snapshot_json, print_quality_report, print_record_release_attempt,
-    print_release_approve, print_release_bundle_json, print_release_changelog,
-    print_release_health, print_release_health_json, print_release_ledger,
+    print_proof_snapshot_json, print_propose_task, print_quality_report,
+    print_record_release_attempt, print_release_approve, print_release_bundle_json,
+    print_release_changelog, print_release_health, print_release_health_json, print_release_ledger,
     print_release_ledger_json, print_release_manifest, print_release_preflight_json,
     print_release_proposal, print_release_proposal_json, print_release_status, print_report,
     print_rollback_manifest, print_runtime_candidate, print_runtime_cli_contract,
-    print_runtime_service, print_runtime_validation, print_strategy_portfolio,
-    print_supervised_run_report, print_trust_decision, print_trust_proof_report,
-    promote_approved_candidate, promote_candidate, promotion_blocked_items,
-    promotion_ready_approved, promotion_ready_items, refresh_metrics, refresh_portfolio,
-    refresh_promotion_queue, refresh_report, refresh_strategy_portfolio, reject_candidate,
-    render_plans, render_recombined_hypotheses, replay_candidate, review_candidate, run_benchmark,
-    run_bounded_evolution, run_demo, run_evolution_cycle, run_planned_cycles,
-    run_planned_evolution_cycle, run_recombined_evolution_cycle, run_repo_patch_report,
-    run_stored_campaign, run_task_from_path, run_tui, serve_runtime_daemon,
+    print_runtime_service, print_runtime_validation, print_show_task, print_specimen_add,
+    print_specimen_list, print_strategy_portfolio, print_supervised_run_report, print_tasks,
+    print_trust_decision, print_trust_proof_report, print_validation_run,
+    print_workspace_inspection, promote_approved_candidate, promote_candidate,
+    promotion_blocked_items, promotion_ready_approved, promotion_ready_items, refresh_metrics,
+    refresh_portfolio, refresh_promotion_queue, refresh_report, refresh_strategy_portfolio,
+    reject_candidate, render_plans, render_recombined_hypotheses, replay_candidate,
+    review_candidate, run_benchmark, run_bounded_evolution, run_demo, run_evolution_cycle,
+    run_planned_cycles, run_planned_evolution_cycle, run_recombined_evolution_cycle,
+    run_repo_patch_report, run_stored_campaign, run_task_from_path, run_tui, serve_runtime_daemon,
     should_run_repo_patch_mode, suggest_strategy_tasks, supervise_task, CycleInput,
     RepoPatchCliConfig, RuntimeCliCommand, RuntimeCycleRunner, RUNTIME_CLI_HELP,
 };
@@ -55,6 +59,17 @@ fn main() {
             },
             Err(err) => {
                 eprintln!("repo_patch_cli_error: {err}");
+                std::process::exit(1);
+            }
+        }
+        return;
+    }
+
+    if let Some(output) = handle_agent_cli(&args) {
+        match output {
+            Ok(output) => println!("{output}"),
+            Err(err) => {
+                eprintln!("agent_error: {err}");
                 std::process::exit(1);
             }
         }
@@ -1494,6 +1509,42 @@ fn main() {
             eprintln!("runtime_cycle_error: {err}");
             std::process::exit(1);
         }
+    }
+}
+
+fn handle_agent_cli(args: &[String]) -> Option<Result<String, String>> {
+    if args.is_empty() {
+        return None;
+    }
+    match args[0].as_str() {
+        "task" | "--task" if args.len() >= 2 => {
+            Some(print_create_task("memory", &args[1..].join(" ")))
+        }
+        "tasks" | "--tasks" => Some(print_tasks("memory")),
+        "task-show" | "--task-show" if args.len() == 2 => Some(print_show_task("memory", &args[1])),
+        "inspect" | "--inspect" => Some(print_workspace_inspection(".", "memory")),
+        "plan" | "--plan" if args.len() == 2 => Some(print_plan_task(".", "memory", &args[1])),
+        "propose" | "--propose" if args.len() == 2 => {
+            Some(print_propose_task(".", "memory", &args[1]))
+        }
+        "approve" | "--approve" if args.len() == 2 => {
+            Some(print_approve_proposal("memory", &args[1]))
+        }
+        "apply" | "--apply" if args.len() == 2 => {
+            Some(print_apply_proposal(".", "memory", &args[1]))
+        }
+        "validate" | "--validate" => Some(print_validation_run(".", "memory")),
+        "report" if args.len() == 2 => Some(print_agent_report("memory", &args[1])),
+        "pr-summary" | "--pr-summary" if args.len() == 2 => {
+            Some(print_pr_summary_for_task("memory", &args[1]))
+        }
+        "agent-readiness" | "--agent-readiness" => Some(print_agent_readiness("memory")),
+        "llm-health" | "--llm-health" => Some(Ok(llm_health())),
+        "specimen" if args.len() == 4 && args[1] == "add" => {
+            Some(print_specimen_add("memory", &args[2], &args[3]))
+        }
+        "specimen" if args.len() == 2 && args[1] == "list" => Some(print_specimen_list("memory")),
+        _ => None,
     }
 }
 

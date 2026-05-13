@@ -2,9 +2,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::contracts::{
-    CandidateState, EvolutionLogEntry, EvolutionReport, PromotionQueue, PromotionQueueItem,
-    RuntimeCandidateManifest, RuntimeServiceMetadata, TuiCandidateRow, TuiDashboardState,
-    TuiMetricsState, TuiReleaseState, TuiRunRow, TuiState,
+    AgentTask, CandidateState, EvolutionLogEntry, EvolutionReport, ProductionAgentReadiness,
+    PromotionQueue, PromotionQueueItem, RuntimeCandidateManifest, RuntimeServiceMetadata,
+    TuiAgentState, TuiCandidateRow, TuiDashboardState, TuiMetricsState, TuiReleaseState, TuiRunRow,
+    TuiState, ValidationRun,
 };
 use crate::evolution::{
     autonomy_status, count_sandbox_leaks, load_latest_runtime_validation, load_metrics_snapshot,
@@ -192,6 +193,7 @@ pub fn load_tui_state_from_project_root(root: &Path) -> TuiState {
             replay_pass_ratio: replay_pass_ratio(&metrics),
         },
         release,
+        agent: load_agent_state(&memory_root, &mut parse_messages),
         logs,
         parse_messages,
     }
@@ -512,4 +514,111 @@ fn load_latest_json<T: serde::de::DeserializeOwned>(
     paths.sort();
     let path = paths.pop()?;
     load_exact_json(&path, label, parse_messages)
+}
+
+fn load_agent_state(memory_root: &Path, parse_messages: &mut Vec<String>) -> TuiAgentState {
+    let tasks = load_tasks(memory_root, parse_messages);
+    let latest_task = load_exact_json::<AgentTask>(
+        &memory_root.join("tasks").join("latest_task.json"),
+        "latest task",
+        parse_messages,
+    )
+    .or_else(|| tasks.last().cloned());
+    let validation = load_exact_json::<ValidationRun>(
+        &memory_root
+            .join("validations")
+            .join("latest_validation.json"),
+        "latest validation",
+        parse_messages,
+    );
+    let readiness = load_exact_json::<ProductionAgentReadiness>(
+        &memory_root.join("agent").join("readiness.json"),
+        "agent readiness",
+        parse_messages,
+    );
+    let openai_configured = std::env::var("OPENAI_API_KEY")
+        .ok()
+        .filter(|value| !value.is_empty())
+        .is_some();
+    TuiAgentState {
+        latest_task_id: latest_task
+            .as_ref()
+            .map(|task| task.task_id.clone())
+            .unwrap_or_else(|| "missing".to_string()),
+        task_count: tasks.len(),
+        latest_task_goal: latest_task
+            .as_ref()
+            .map(|task| task.goal.clone())
+            .unwrap_or_else(|| "missing".to_string()),
+        latest_task_status: latest_task
+            .as_ref()
+            .map(|task| format!("{:?}", task.status))
+            .unwrap_or_else(|| "missing".to_string()),
+        latest_plan_id: latest_task
+            .as_ref()
+            .and_then(|task| task.plan_id.clone())
+            .unwrap_or_else(|| "missing".to_string()),
+        latest_proposal_id: latest_task
+            .as_ref()
+            .and_then(|task| task.proposal_id.clone())
+            .unwrap_or_else(|| "missing".to_string()),
+        latest_validation_id: validation
+            .as_ref()
+            .map(|value| value.validation_id.clone())
+            .unwrap_or_else(|| "missing".to_string()),
+        latest_validation_status: validation
+            .as_ref()
+            .map(|value| format!("{:?}", value.status).to_ascii_lowercase())
+            .unwrap_or_else(|| "missing".to_string()),
+        latest_report_id: latest_task
+            .as_ref()
+            .and_then(|task| task.report_id.clone())
+            .unwrap_or_else(|| "missing".to_string()),
+        latest_pr_summary_id: latest_task
+            .as_ref()
+            .and_then(|task| task.pr_summary_id.clone())
+            .unwrap_or_else(|| "missing".to_string()),
+        llm_provider: if openai_configured {
+            "openai".to_string()
+        } else {
+            "rule_based".to_string()
+        },
+        openai_configured,
+        llm_model: std::env::var("EVE_OPENAI_MODEL").unwrap_or_else(|_| "gpt-5.5".to_string()),
+        fallback_available: true,
+        production_agent_v1_ready: readiness
+            .as_ref()
+            .map(|value| value.production_agent_v1_ready)
+            .unwrap_or(false),
+        readiness_blockers: readiness.map(|value| value.blockers).unwrap_or_default(),
+    }
+}
+
+fn load_tasks(memory_root: &Path, parse_messages: &mut Vec<String>) -> Vec<AgentTask> {
+    let dir = memory_root.join("tasks");
+    if !dir.exists() {
+        return Vec::new();
+    }
+    let mut tasks = Vec::new();
+    let entries = match fs::read_dir(&dir) {
+        Ok(entries) => entries,
+        Err(error) => {
+            parse_messages.push(parse_error_message(&dir, &error.to_string()));
+            return Vec::new();
+        }
+    };
+    for entry in entries.filter_map(Result::ok) {
+        let path = entry.path();
+        if path.file_name().and_then(|name| name.to_str()) == Some("latest_task.json") {
+            continue;
+        }
+        if path.extension().and_then(|ext| ext.to_str()) != Some("json") {
+            continue;
+        }
+        if let Some(task) = load_exact_json::<AgentTask>(&path, "agent task", parse_messages) {
+            tasks.push(task);
+        }
+    }
+    tasks.sort_by(|left, right| left.task_id.cmp(&right.task_id));
+    tasks
 }

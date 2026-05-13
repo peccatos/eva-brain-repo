@@ -302,7 +302,7 @@ fn temp_campaign_crate(name: &str) -> PathBuf {
     fs::create_dir_all(root.join("memory")).expect("memory");
     fs::write(
         root.join("Cargo.toml"),
-        "[package]\nname = \"phase55_temp\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[lib]\ndoctest = false\n\n[dependencies]\nserde = { version = \"1\", features = [\"derive\"] }\nserde_json = \"1\"\n",
+        "[package]\nname = \"phase55_temp\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[lib]\ndoctest = false\n",
     )
     .expect("cargo");
     fs::write(root.join("src/main.rs"), "fn main() {}\n").expect("main");

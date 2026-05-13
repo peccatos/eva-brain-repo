@@ -9,6 +9,9 @@ pub enum TuiScreen {
     Release,
     Logs,
     Help,
+    Tasks,
+    Agent,
+    Llm,
 }
 
 impl TuiScreen {
@@ -21,6 +24,9 @@ impl TuiScreen {
             "5" => Self::Release,
             "6" => Self::Logs,
             "7" | "h" | "H" => Self::Help,
+            "8" => Self::Tasks,
+            "9" => Self::Agent,
+            "0" => Self::Llm,
             _ => Self::Dashboard,
         }
     }
@@ -29,7 +35,7 @@ impl TuiScreen {
 pub fn render_screen(state: &TuiState, screen: TuiScreen, width: usize) -> String {
     let mut output = String::new();
     output.push_str("EVA Operator TUI\n");
-    output.push_str("1 Dashboard | 2 Runs | 3 Candidates | 4 Metrics | 5 Release | 6 Logs | 7 Help | r refresh | q quit\n\n");
+    output.push_str("1 Dashboard | 2 Runs | 3 Candidates | 4 Metrics | 5 Release | 6 Logs | 7 Help | 8 Tasks | 9 Agent | 0 LLM | r refresh | q quit\n\n");
     match screen {
         TuiScreen::Dashboard => render_dashboard(state, &mut output),
         TuiScreen::Runs => render_runs(state, &mut output, width),
@@ -38,6 +44,9 @@ pub fn render_screen(state: &TuiState, screen: TuiScreen, width: usize) -> Strin
         TuiScreen::Release => render_release(state, &mut output),
         TuiScreen::Logs => render_logs(state, &mut output, width),
         TuiScreen::Help => render_help(&mut output),
+        TuiScreen::Tasks => render_tasks(state, &mut output),
+        TuiScreen::Agent => render_agent(state, &mut output),
+        TuiScreen::Llm => render_llm(state, &mut output),
     }
     output
 }
@@ -201,9 +210,49 @@ fn render_help(output: &mut String) {
     output.push_str("Help\n");
     output.push_str("q / Esc = quit\n");
     output.push_str(
-        "1 = Dashboard\n2 = Runs\n3 = Candidates\n4 = Metrics\n5 = Release\n6 = Logs\n7 = Help\n",
+        "1 = Dashboard\n2 = Runs\n3 = Candidates\n4 = Metrics\n5 = Release\n6 = Logs\n7 = Help\n8 = Tasks\n9 = Agent\n0 = LLM\n",
     );
     output.push_str("r = refresh\nh = help\n");
+}
+
+fn render_tasks(state: &TuiState, output: &mut String) {
+    let agent = &state.agent;
+    output.push_str("Tasks\n");
+    output.push_str(&format!(
+        "latest_task={} task_count={} status={} approval_required=true\n",
+        agent.latest_task_id, agent.task_count, agent.latest_task_status
+    ));
+    output.push_str(&format!("goal={}\n", agent.latest_task_goal));
+    output.push_str(&format!(
+        "plan={} proposal={} report={} pr_summary={}\n",
+        agent.latest_plan_id,
+        agent.latest_proposal_id,
+        agent.latest_report_id,
+        agent.latest_pr_summary_id
+    ));
+}
+
+fn render_agent(state: &TuiState, output: &mut String) {
+    let agent = &state.agent;
+    output.push_str("Agent Readiness\n");
+    output.push_str(&format!(
+        "production_agent_v1_ready={} validation={} validation_id={}\n",
+        agent.production_agent_v1_ready, agent.latest_validation_status, agent.latest_validation_id
+    ));
+    output.push_str(&format!(
+        "missing_components={}\n",
+        join_or_none(&agent.readiness_blockers)
+    ));
+}
+
+fn render_llm(state: &TuiState, output: &mut String) {
+    let agent = &state.agent;
+    output.push_str("LLM\n");
+    output.push_str(&format!(
+        "provider={} openai_configured={} model={} fallback_available={}\n",
+        agent.llm_provider, agent.openai_configured, agent.llm_model, agent.fallback_available
+    ));
+    output.push_str("last_llm_status=unknown\n");
 }
 
 fn join_or_none(values: &[String]) -> String {

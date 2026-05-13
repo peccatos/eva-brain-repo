@@ -1,3 +1,4 @@
+pub mod agent;
 pub mod benchmark_case_loader;
 pub mod benchmark_contract;
 pub mod benchmark_metrics;
@@ -8,6 +9,7 @@ pub mod evolution;
 pub mod github_tool_contract;
 pub mod github_tool_executor;
 pub mod graph;
+pub mod llm;
 pub mod local_model;
 pub mod project_phase_report;
 pub mod promotion;
@@ -20,6 +22,15 @@ pub mod tool_contract;
 pub mod tool_executor;
 pub mod tui;
 
+pub use agent::{
+    add_specimen, apply_proposal, approve_proposal, build_agent_report, build_pr_summary_for_task,
+    build_production_agent_readiness, create_task, inspect_workspace, list_specimens, list_tasks,
+    plan_task, print_agent_readiness, print_agent_report, print_apply_proposal,
+    print_approve_proposal, print_create_task, print_plan_task, print_pr_summary_for_task,
+    print_propose_task, print_show_task, print_specimen_add, print_specimen_list, print_tasks,
+    print_validation_run, print_workspace_inspection, propose_task, run_validation, show_task,
+    validate_patch_path,
+};
 pub use benchmark_case_loader::BenchmarkCaseLoader;
 pub use benchmark_contract::{
     BenchmarkCaseManifest, BenchmarkFailureType, BenchmarkSourceType, RepositoryDiscoveryCase,
@@ -29,20 +40,24 @@ pub use benchmark_metrics::{BenchmarkAggregateMetrics, BenchmarkCaseMetrics};
 pub use benchmark_report::{BenchmarkBatchReport, DEFAULT_BATCH_REPORT_PATH};
 pub use benchmark_runner::BenchmarkRunner;
 pub use contracts::{
-    ApprovalStatus, ArtifactAuditReport, CandidateQueueSummary, CandidateState, CapabilityPolicy,
-    CommandResult, CorpusIngestContract, DeniedMutationKind, DeterminismAuditReport,
-    EvidenceBundle, EvolutionLogEntry, EvolutionReport, EvolutionStatus, ExternalPatchPackage,
-    FinalRcReport, FuturePhaseEntry, FuturePhaseRegistry, GovernanceStatus, GovernanceTrustGate,
-    MutationContract, MutationKind, MutationObjective, MutationPlan, OperationsReport,
-    OperatorApprovalRecord, OperatorConsoleReport, PrPackage, PreflightGateReport,
-    PreflightGateV3Report, PromotionQueue, PromotionQueueItem, ProofReport, ProofSnapshot,
+    AgentApproval, AgentPlan, AgentReport, AgentTask, AgentTaskStatus, AgentValidationStatus,
+    ApplyResult, ApplyStatus, ApprovalStatus, ArtifactAuditReport, CandidateQueueSummary,
+    CandidateState, CapabilityPolicy, CommandResult, CorpusIngestContract, DeniedMutationKind,
+    DeterminismAuditReport, EvidenceBundle, EvolutionLogEntry, EvolutionReport, EvolutionStatus,
+    ExternalPatchPackage, FinalRcReport, FuturePhaseEntry, FuturePhaseRegistry, GovernanceStatus,
+    GovernanceTrustGate, LlmPurpose, LlmRequest, LlmResponse, LlmStatus, MutationContract,
+    MutationKind, MutationObjective, MutationPlan, OperationsReport, OperatorApprovalRecord,
+    OperatorConsoleReport, PatchOp, PatchOperationKind, PatchProposal, PlanStep, PrPackage,
+    PrSummary, PreflightGateReport, PreflightGateV3Report, ProductionAgentReadiness,
+    PromotionQueue, PromotionQueueItem, ProofReport, ProofSnapshot, ProposalStatus,
     RecombinedHypothesis, RecoveryManifest, ReleaseBundle, ReleaseCandidateApprovalReport,
     ReleaseCandidateState, ReleaseHealthReport, ReleaseLedgerRecord, ReleaseManifest,
     ReleasePreflightReport, ReleaseProposal, ReleaseProposalItem, RollbackManifest,
     RuntimeCandidateManifest, RuntimeCliCommandContract, RuntimeCliContractReport,
-    RuntimeServiceMetadata, RuntimeValidation, SandboxResult, SelfReviewPackage, SupervisedRun,
-    TaskAdjustment, TaskContract, TrustDecision, TrustProofReport, TuiCandidateRow,
-    TuiDashboardState, TuiMetricsState, TuiReleaseState, TuiRunRow, TuiState, ValidationStatus,
+    RuntimeServiceMetadata, RuntimeValidation, SandboxResult, SanitizedContext, SelfReviewPackage,
+    SpecimenMetadata, SupervisedRun, TaskAdjustment, TaskContract, TrustDecision, TrustProofReport,
+    TuiAgentState, TuiCandidateRow, TuiDashboardState, TuiMetricsState, TuiReleaseState, TuiRunRow,
+    TuiState, ValidationCommandResult, ValidationRun, ValidationStatus, WorkspaceInspection,
     WorkspaceSnapshot,
 };
 pub use evolution::{

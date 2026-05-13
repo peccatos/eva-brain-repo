@@ -151,6 +151,42 @@ pub struct TuiReleaseState {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct TuiAgentState {
+    #[serde(default)]
+    pub latest_task_id: String,
+    #[serde(default)]
+    pub task_count: usize,
+    #[serde(default)]
+    pub latest_task_goal: String,
+    #[serde(default)]
+    pub latest_task_status: String,
+    #[serde(default)]
+    pub latest_plan_id: String,
+    #[serde(default)]
+    pub latest_proposal_id: String,
+    #[serde(default)]
+    pub latest_validation_id: String,
+    #[serde(default)]
+    pub latest_validation_status: String,
+    #[serde(default)]
+    pub latest_report_id: String,
+    #[serde(default)]
+    pub latest_pr_summary_id: String,
+    #[serde(default)]
+    pub llm_provider: String,
+    #[serde(default)]
+    pub openai_configured: bool,
+    #[serde(default)]
+    pub llm_model: String,
+    #[serde(default)]
+    pub fallback_available: bool,
+    #[serde(default)]
+    pub production_agent_v1_ready: bool,
+    #[serde(default)]
+    pub readiness_blockers: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct TuiState {
     #[serde(default)]
     pub dashboard: TuiDashboardState,
@@ -162,6 +198,8 @@ pub struct TuiState {
     pub metrics: TuiMetricsState,
     #[serde(default)]
     pub release: TuiReleaseState,
+    #[serde(default)]
+    pub agent: TuiAgentState,
     #[serde(default)]
     pub logs: Vec<String>,
     #[serde(default)]

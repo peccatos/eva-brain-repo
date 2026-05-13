@@ -19,6 +19,9 @@ pub fn parse_event(input: &str) -> TuiEvent {
         "5" => TuiEvent::Switch(TuiScreen::Release),
         "6" => TuiEvent::Switch(TuiScreen::Logs),
         "7" | "h" | "H" => TuiEvent::Switch(TuiScreen::Help),
+        "8" => TuiEvent::Switch(TuiScreen::Tasks),
+        "9" => TuiEvent::Switch(TuiScreen::Agent),
+        "0" => TuiEvent::Switch(TuiScreen::Llm),
         _ => TuiEvent::None,
     }
 }

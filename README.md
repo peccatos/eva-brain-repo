@@ -153,3 +153,34 @@ Current compressed path:
 - `15.6X` first governed release-candidate path
 - `15.7X` green gate attempt
 - `16.0P` readiness scaffold only, without evolution-core activation
+
+## EVE Production Agent v1
+
+Local governed software engineering loop:
+
+```bash
+cargo run -- task "document production agent v1"
+cargo run -- inspect
+cargo run -- plan <TASK_ID>
+cargo run -- propose <TASK_ID>
+cargo run -- approve <PROPOSAL_ID>
+cargo run -- apply <PROPOSAL_ID>
+cargo run -- validate
+cargo run -- report <TASK_ID>
+cargo run -- pr-summary <TASK_ID>
+cargo run -- agent-readiness
+cargo run -- tui
+```
+
+The loop is operator-gated. Proposals do not apply themselves, OpenAI output cannot bypass approval, and PR summaries do not push or create remote PRs.
+
+Docs:
+
+- `docs/production_agent_v1.md`
+- `docs/openai_llm_adapter.md`
+- `docs/agent_task_contract.md`
+- `docs/agent_workspace_inspector.md`
+- `docs/agent_proposal_apply.md`
+- `docs/agent_validation_report.md`
+- `docs/agent_pr_summary.md`
+- `docs/agent_safety_model.md`

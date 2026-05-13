@@ -30,6 +30,45 @@ pub const RUNTIME_CLI_HELP: &str = r#"EVA runtime commands:
   cargo run -- status
       Print the current runtime validation status.
 
+  cargo run -- task <GOAL>
+      Create a governed production-agent task.
+
+  cargo run -- tasks
+      List governed production-agent tasks.
+
+  cargo run -- task-show <TASK_ID>
+      Show one governed production-agent task.
+
+  cargo run -- inspect
+      Inspect the local workspace for the production-agent loop.
+
+  cargo run -- plan <TASK_ID>
+      Create a deterministic agent plan.
+
+  cargo run -- propose <TASK_ID>
+      Create or refuse a structured patch proposal.
+
+  cargo run -- approve <PROPOSAL_ID>
+      Operator-approve a safe proposal.
+
+  cargo run -- apply <PROPOSAL_ID>
+      Apply an approved proposal with snapshot metadata.
+
+  cargo run -- validate
+      Run allowlisted validation commands.
+
+  cargo run -- report <TASK_ID>
+      Generate a local agent evidence report.
+
+  cargo run -- pr-summary <TASK_ID>
+      Generate a local PR summary without push or PR creation.
+
+  cargo run -- agent-readiness
+      Print production-agent readiness.
+
+  cargo run -- llm-health
+      Print LLM provider health without exposing secrets.
+
   cargo run -- --evolve
       Run one bounded self-evolution cycle in a disposable sandbox.
 

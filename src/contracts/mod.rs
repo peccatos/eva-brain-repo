@@ -1,3 +1,8 @@
+pub mod agent_approval;
+pub mod agent_plan;
+pub mod agent_report;
+pub mod agent_task;
+pub mod apply_result;
 pub mod artifact_audit;
 pub mod capability_policy;
 pub mod corpus_contract;
@@ -11,14 +16,18 @@ pub mod external_patch_package;
 pub mod final_rc_report;
 pub mod future_phase;
 pub mod governance;
+pub mod llm;
 pub mod mutation;
 pub mod mutation_plan;
 pub mod operations_report;
 pub mod operator_approval;
 pub mod operator_console;
+pub mod patch_proposal;
 pub mod pr_package;
+pub mod pr_summary;
 pub mod preflight_gate;
 pub mod preflight_gate_v3;
+pub mod production_agent_readiness;
 pub mod promotion_queue;
 pub mod proof_report;
 pub mod proof_snapshot;
@@ -37,6 +46,7 @@ pub mod runtime_service;
 pub mod runtime_validation;
 pub mod sandbox_result;
 pub mod self_review_package;
+pub mod specimen;
 pub mod supervised_run;
 pub mod task_adjustment;
 pub mod task_contract;
@@ -44,8 +54,15 @@ pub mod trust_decision;
 pub mod trust_proof_report;
 pub mod tui;
 pub mod validation;
+pub mod validation_run;
+pub mod workspace_inspection;
 pub mod workspace_snapshot;
 
+pub use agent_approval::AgentApproval;
+pub use agent_plan::{AgentPlan, PlanStep};
+pub use agent_report::AgentReport;
+pub use agent_task::{AgentTask, AgentTaskStatus};
+pub use apply_result::{ApplyResult, ApplyStatus};
 pub use artifact_audit::ArtifactAuditReport;
 pub use capability_policy::CapabilityPolicy;
 pub use corpus_contract::CorpusIngestContract;
@@ -59,14 +76,18 @@ pub use external_patch_package::ExternalPatchPackage;
 pub use final_rc_report::FinalRcReport;
 pub use future_phase::{FuturePhaseEntry, FuturePhaseRegistry};
 pub use governance::{ApprovalStatus, GovernanceStatus, GovernanceTrustGate};
+pub use llm::{LlmPurpose, LlmRequest, LlmResponse, LlmStatus, SanitizedContext};
 pub use mutation::{MutationContract, MutationKind};
 pub use mutation_plan::{MutationObjective, MutationPlan};
 pub use operations_report::OperationsReport;
 pub use operator_approval::OperatorApprovalRecord;
 pub use operator_console::OperatorConsoleReport;
+pub use patch_proposal::{PatchOp, PatchOperationKind, PatchProposal, ProposalStatus};
 pub use pr_package::PrPackage;
+pub use pr_summary::PrSummary;
 pub use preflight_gate::PreflightGateReport;
 pub use preflight_gate_v3::PreflightGateV3Report;
+pub use production_agent_readiness::ProductionAgentReadiness;
 pub use promotion_queue::{
     CandidateQueueSummary, CandidateState, PromotionQueue, PromotionQueueItem,
 };
@@ -87,12 +108,16 @@ pub use runtime_service::RuntimeServiceMetadata;
 pub use runtime_validation::RuntimeValidation;
 pub use sandbox_result::{CommandResult, SandboxResult};
 pub use self_review_package::SelfReviewPackage;
+pub use specimen::SpecimenMetadata;
 pub use supervised_run::SupervisedRun;
 pub use task_adjustment::TaskAdjustment;
 pub use task_contract::{DeniedMutationKind, TaskContract};
 pub use trust_decision::TrustDecision;
 pub use trust_proof_report::TrustProofReport;
 pub use tui::{
-    TuiCandidateRow, TuiDashboardState, TuiMetricsState, TuiReleaseState, TuiRunRow, TuiState,
+    TuiAgentState, TuiCandidateRow, TuiDashboardState, TuiMetricsState, TuiReleaseState, TuiRunRow,
+    TuiState,
 };
+pub use validation_run::{AgentValidationStatus, ValidationCommandResult, ValidationRun};
+pub use workspace_inspection::WorkspaceInspection;
 pub use workspace_snapshot::WorkspaceSnapshot;
