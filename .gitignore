@@ -61,6 +61,15 @@ memory/runtime_candidates/
 memory/runtime_validation/
 memory/runtime_service/
 memory/final_rc/
+memory/inspections/
+memory/plans/
+memory/proposals/
+memory/approvals/
+memory/applies/
+memory/validations/
+memory/pr_summaries/
+memory/agent/
+memory/specimens/
 memory/release_candidates/
 memory/releases/
 memory/releases/bundles/
