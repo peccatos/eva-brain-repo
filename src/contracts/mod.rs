@@ -15,6 +15,7 @@ pub mod evolution_core_readiness;
 pub mod evolution_log;
 pub mod evolution_report;
 pub mod external_patch_package;
+pub mod external_trial;
 pub mod final_rc_report;
 pub mod fix;
 pub mod future_phase;
@@ -89,6 +90,9 @@ pub use evolution_core_readiness::EvolutionCoreReadiness;
 pub use evolution_log::{EvolutionLogEntry, EvolutionStatus, ValidationStatus};
 pub use evolution_report::EvolutionReport;
 pub use external_patch_package::ExternalPatchPackage;
+pub use external_trial::{
+    parse_fix_only_from_command, ExternalTrialRepoResult, ExternalTrialReport, ExternalTrialRequest,
+};
 pub use final_rc_report::FinalRcReport;
 pub use fix::{
     FixDetectedProblem, FixEvidencePaths, FixMode, FixOnly, FixProblemKind, FixReport, FixRequest,
@@ -123,8 +127,11 @@ pub use release_ledger::ReleaseLedgerRecord;
 pub use release_manifest::ReleaseManifest;
 pub use release_proposal::{ReleaseProposal, ReleaseProposalItem};
 pub use repair_bench::{
-    RepairBenchCase, RepairBenchCaseResult, RepairBenchCaseStatus, RepairBenchEvidencePaths,
-    RepairBenchMetricSummary, RepairBenchReport, RepairBenchRequest, RepairBenchStatus,
+    RepairBenchBaseline, RepairBenchCase, RepairBenchCaseHistoryStatus, RepairBenchCaseResult,
+    RepairBenchCaseStatus, RepairBenchEvidencePaths, RepairBenchGateReport, RepairBenchGateRequest,
+    RepairBenchGateStatus, RepairBenchHistoryEntry, RepairBenchHistoryReport,
+    RepairBenchMetricSummary, RepairBenchRegression, RepairBenchReport, RepairBenchRequest,
+    RepairBenchStatus,
 };
 pub use repo_map::{RepoMap, RepoModule};
 pub use rollback_manifest::RollbackManifest;

@@ -15,10 +15,10 @@ use eva_runtime_with_task_validator::{
     print_benchmark, print_bounded_run_report, print_campaign, print_campaign_report,
     print_capability_policy, print_create_task, print_determinism_audit,
     print_determinism_audit_json, print_doctor, print_eva_status, print_evolution_policy,
-    print_final_rc_report, print_fitness, print_fix, print_future_phases, print_future_phases_json,
-    print_hygiene_plan, print_hygiene_report, print_last_bounded_run, print_last_campaign_report,
-    print_last_evidence_bundle, print_last_external_patch_package, print_last_pr_package,
-    print_last_recovery_manifest, print_last_release, print_last_report,
+    print_external_trial, print_final_rc_report, print_fitness, print_fix, print_future_phases,
+    print_future_phases_json, print_hygiene_plan, print_hygiene_report, print_last_bounded_run,
+    print_last_campaign_report, print_last_evidence_bundle, print_last_external_patch_package,
+    print_last_pr_package, print_last_recovery_manifest, print_last_release, print_last_report,
     print_last_self_review_package, print_last_supervised_run, print_last_task_adjustment,
     print_last_workspace_snapshot, print_operator_console, print_operator_runbook, print_ops_json,
     print_ops_status, print_outcome_analyze, print_patterns, print_plan_task, print_portfolio,
@@ -29,12 +29,13 @@ use eva_runtime_with_task_validator::{
     print_release_bundle_json, print_release_changelog, print_release_health,
     print_release_health_json, print_release_ledger, print_release_ledger_json,
     print_release_manifest, print_release_preflight_json, print_release_proposal,
-    print_release_proposal_json, print_release_status, print_repair_bench, print_repo_map,
-    print_report, print_rollback_manifest, print_runtime_candidate, print_runtime_cli_contract,
-    print_runtime_service, print_runtime_validation, print_self_improve_propose, print_show_task,
-    print_specimen_add, print_specimen_list, print_strategy_memory, print_strategy_portfolio,
-    print_strategy_select, print_supervised_run_report, print_task_outcome, print_task_outcomes,
-    print_tasks, print_trust_decision, print_trust_proof_report, print_validation_run,
+    print_release_proposal_json, print_release_status, print_repair_bench, print_repair_bench_gate,
+    print_repair_bench_history, print_repo_map, print_report, print_rollback_manifest,
+    print_runtime_candidate, print_runtime_cli_contract, print_runtime_service,
+    print_runtime_validation, print_self_improve_propose, print_show_task, print_specimen_add,
+    print_specimen_list, print_strategy_memory, print_strategy_portfolio, print_strategy_select,
+    print_supervised_run_report, print_task_outcome, print_task_outcomes, print_tasks,
+    print_trust_decision, print_trust_proof_report, print_validation_run,
     print_workspace_inspection, promote_approved_candidate, promote_candidate,
     promotion_blocked_items, promotion_ready_approved, promotion_ready_items, refresh_metrics,
     refresh_portfolio, refresh_promotion_queue, refresh_report, refresh_strategy_portfolio,
@@ -43,8 +44,9 @@ use eva_runtime_with_task_validator::{
     run_planned_cycles, run_planned_evolution_cycle, run_recombined_evolution_cycle,
     run_repo_patch_report, run_stored_campaign, run_task_from_path, run_tui, serve_runtime_daemon,
     should_run_repo_patch_mode, suggest_strategy_tasks, supervise_task, CycleInput, DoctorRequest,
-    FixOnly, FixRequest, FixRiskCap, RepairBenchRequest, RepoPatchCliConfig, RuntimeCliCommand,
-    RuntimeCycleRunner, RUNTIME_CLI_HELP,
+    ExternalTrialRequest, FixOnly, FixRequest, FixRiskCap, RepairBenchGateRequest,
+    RepairBenchRequest, RepoPatchCliConfig, RuntimeCliCommand, RuntimeCycleRunner,
+    RUNTIME_CLI_HELP,
 };
 use serde::Deserialize;
 use std::fs;
@@ -1528,6 +1530,17 @@ fn handle_agent_cli(args: &[String]) -> Option<Result<String, String>> {
         "repair-bench" | "--repair-bench" => {
             Some(parse_repair_bench_cli(args).and_then(print_repair_bench))
         }
+        "repair-bench-history" | "--repair-bench-history" => Some(
+            parse_repair_bench_history_cli(args).and_then(|(output_dir, json, limit)| {
+                print_repair_bench_history(output_dir, json, limit)
+            }),
+        ),
+        "repair-bench-gate" | "--repair-bench-gate" => {
+            Some(parse_repair_bench_gate_cli(args).and_then(print_repair_bench_gate))
+        }
+        "external-trial" | "--external-trial" if args.len() >= 2 => {
+            Some(parse_external_trial_cli(args).and_then(print_external_trial))
+        }
         "task" | "--task" if args.len() >= 2 => {
             Some(print_create_task("memory", &args[1..].join(" ")))
         }
@@ -1618,6 +1631,7 @@ fn parse_fix_cli(args: &[String]) -> Result<FixRequest, String> {
                     "ci" => FixOnly::Ci,
                     "tests" => FixOnly::Tests,
                     "docs" => FixOnly::Docs,
+                    "hygiene" => FixOnly::Hygiene,
                     other => return Err(format!("unsupported --only value: {other}")),
                 });
                 index += 2;
@@ -1771,6 +1785,149 @@ fn parse_repair_bench_cli(args: &[String]) -> Result<RepairBenchRequest, String>
         suite,
         output_dir,
         no_llm,
+        json,
+    })
+}
+
+fn parse_repair_bench_history_cli(
+    args: &[String],
+) -> Result<(PathBuf, bool, Option<usize>), String> {
+    let mut output_dir = PathBuf::from(".eva/repair-bench");
+    let mut json = false;
+    let mut limit = None::<usize>;
+    let mut index = 1usize;
+    while index < args.len() {
+        match args[index].as_str() {
+            "--output" => {
+                let value = args
+                    .get(index + 1)
+                    .ok_or_else(|| "missing value for --output".to_string())?;
+                output_dir = PathBuf::from(value);
+                index += 2;
+            }
+            "--json" => {
+                json = true;
+                index += 1;
+            }
+            "--limit" => {
+                let value = args
+                    .get(index + 1)
+                    .ok_or_else(|| "missing value for --limit".to_string())?;
+                limit = Some(
+                    value
+                        .parse::<usize>()
+                        .map_err(|error| format!("invalid --limit: {error}"))?,
+                );
+                index += 2;
+            }
+            other => {
+                return Err(format!(
+                    "unsupported repair-bench-history argument: {other}"
+                ))
+            }
+        }
+    }
+    Ok((output_dir, json, limit))
+}
+
+fn parse_repair_bench_gate_cli(args: &[String]) -> Result<RepairBenchGateRequest, String> {
+    let mut suite = "phase21".to_string();
+    let mut baseline = "latest".to_string();
+    let mut baseline_file = None::<PathBuf>;
+    let mut output_dir = PathBuf::from(".eva/repair-bench");
+    let mut json = false;
+
+    let mut index = 1usize;
+    while index < args.len() {
+        match args[index].as_str() {
+            "--suite" => {
+                let value = args
+                    .get(index + 1)
+                    .ok_or_else(|| "missing value for --suite".to_string())?;
+                suite = value.clone();
+                index += 2;
+            }
+            "--baseline" => {
+                let value = args
+                    .get(index + 1)
+                    .ok_or_else(|| "missing value for --baseline".to_string())?;
+                baseline = value.clone();
+                index += 2;
+            }
+            "--baseline-file" => {
+                let value = args
+                    .get(index + 1)
+                    .ok_or_else(|| "missing value for --baseline-file".to_string())?;
+                baseline_file = Some(PathBuf::from(value));
+                index += 2;
+            }
+            "--output" => {
+                let value = args
+                    .get(index + 1)
+                    .ok_or_else(|| "missing value for --output".to_string())?;
+                output_dir = PathBuf::from(value);
+                index += 2;
+            }
+            "--json" => {
+                json = true;
+                index += 1;
+            }
+            other => return Err(format!("unsupported repair-bench-gate argument: {other}")),
+        }
+    }
+
+    Ok(RepairBenchGateRequest {
+        suite,
+        baseline,
+        baseline_file,
+        output_dir,
+        json,
+    })
+}
+
+fn parse_external_trial_cli(args: &[String]) -> Result<ExternalTrialRequest, String> {
+    let mut repo_paths = Vec::new();
+    let mut json = false;
+    let mut output_dir = PathBuf::from(".eva/external-trials");
+    let mut index = 1usize;
+    while index < args.len() {
+        match args[index].as_str() {
+            "--json" => {
+                json = true;
+                index += 1;
+            }
+            "--output" => {
+                let value = args
+                    .get(index + 1)
+                    .ok_or_else(|| "missing value for --output".to_string())?;
+                output_dir = PathBuf::from(value);
+                index += 2;
+            }
+            value if value.starts_with("--") => {
+                return Err(format!("unsupported external-trial argument: {value}"))
+            }
+            value => {
+                repo_paths.push(PathBuf::from(value));
+                index += 1;
+            }
+        }
+    }
+    if repo_paths.is_empty() {
+        return Err("missing external-trial repo path".to_string());
+    }
+    let trial_id = eva_runtime_with_task_validator::agent::storage::id("external-trial");
+    let output_dir = output_dir.join(&trial_id);
+    let output_dir = if output_dir.is_absolute() {
+        output_dir
+    } else {
+        std::env::current_dir()
+            .map_err(|error| format!("failed to resolve current dir: {error}"))?
+            .join(output_dir)
+    };
+    Ok(ExternalTrialRequest {
+        trial_id,
+        repo_paths,
+        output_dir,
         json,
     })
 }

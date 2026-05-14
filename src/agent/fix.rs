@@ -298,14 +298,21 @@ fn detect_problem(
     }
     let categories = match only {
         Some(FixOnly::CargoCheck) => vec![FixProblemKind::CargoCheckFailure],
-        Some(FixOnly::Ci) => vec![FixProblemKind::MissingCi],
+        Some(FixOnly::Ci) => vec![FixProblemKind::MissingCi, FixProblemKind::MissingClippyCi],
         Some(FixOnly::Tests) => vec![FixProblemKind::MissingSmokeTest],
-        Some(FixOnly::Docs) => vec![FixProblemKind::MissingReadmeValidation],
+        Some(FixOnly::Docs) => vec![
+            FixProblemKind::MissingReadmeValidation,
+            FixProblemKind::MissingReadmeUsageSection,
+        ],
+        Some(FixOnly::Hygiene) => vec![FixProblemKind::MissingGitignoreTarget],
         None => vec![
             FixProblemKind::CargoCheckFailure,
             FixProblemKind::MissingCi,
+            FixProblemKind::MissingClippyCi,
             FixProblemKind::MissingSmokeTest,
             FixProblemKind::MissingReadmeValidation,
+            FixProblemKind::MissingReadmeUsageSection,
+            FixProblemKind::MissingGitignoreTarget,
         ],
     };
     for category in categories {
@@ -316,6 +323,9 @@ fn detect_problem(
             FixProblemKind::MissingCi => {
                 detect_missing_ci(target_root, workspace_dirty, workspace_changes.clone())
             }
+            FixProblemKind::MissingClippyCi => {
+                detect_missing_clippy_ci(target_root, workspace_dirty, workspace_changes.clone())
+            }
             FixProblemKind::MissingSmokeTest => {
                 detect_missing_smoke_test(target_root, workspace_dirty, workspace_changes.clone())
             }
@@ -324,6 +334,16 @@ fn detect_problem(
                 workspace_dirty,
                 workspace_changes.clone(),
                 only == Some(FixOnly::Docs),
+            )?,
+            FixProblemKind::MissingReadmeUsageSection => detect_missing_readme_usage_section(
+                target_root,
+                workspace_dirty,
+                workspace_changes.clone(),
+            )?,
+            FixProblemKind::MissingGitignoreTarget => detect_missing_gitignore_target(
+                target_root,
+                workspace_dirty,
+                workspace_changes.clone(),
             )?,
         };
         if detected.is_some() {
@@ -407,7 +427,8 @@ fn detect_missing_ci(
     workspace_dirty: bool,
     workspace_changes: Vec<String>,
 ) -> Option<FixDetectedProblem> {
-    if target_root.join(".github/workflows/rust-ci.yml").exists() {
+    let workflow = target_root.join(".github/workflows/rust-ci.yml");
+    if workflow.exists() {
         return None;
     }
     Some(FixDetectedProblem {
@@ -419,6 +440,37 @@ fn detect_missing_ci(
         validation_commands: vec![
             "cargo fmt --check".to_string(),
             "cargo check --all-targets".to_string(),
+            "cargo test".to_string(),
+        ],
+        workspace_dirty,
+        workspace_changes,
+        details: Vec::new(),
+    })
+}
+
+fn detect_missing_clippy_ci(
+    target_root: &Path,
+    workspace_dirty: bool,
+    workspace_changes: Vec<String>,
+) -> Option<FixDetectedProblem> {
+    let workflow = target_root.join(".github/workflows/rust-ci.yml");
+    if !workflow.exists() {
+        return None;
+    }
+    let contents = fs::read_to_string(&workflow).unwrap_or_default();
+    if contents.contains("cargo clippy --all-targets -- -D warnings") {
+        return None;
+    }
+    Some(FixDetectedProblem {
+        kind: FixProblemKind::MissingClippyCi,
+        description: "Rust CI clippy step missing".to_string(),
+        goal: "Add a safe clippy step to the Rust CI workflow.".to_string(),
+        project_type: "rust".to_string(),
+        files_planned: vec![".github/workflows/rust-ci.yml".to_string()],
+        validation_commands: vec![
+            "cargo fmt --check".to_string(),
+            "cargo check --all-targets".to_string(),
+            "cargo clippy --all-targets -- -D warnings".to_string(),
             "cargo test".to_string(),
         ],
         workspace_dirty,
@@ -485,6 +537,62 @@ fn detect_missing_readme_validation(
         goal: "Add README validation commands.".to_string(),
         project_type: "rust".to_string(),
         files_planned: vec!["README.md".to_string()],
+        validation_commands: rust_validation_commands(),
+        workspace_dirty,
+        workspace_changes,
+        details: Vec::new(),
+    }))
+}
+
+fn detect_missing_readme_usage_section(
+    target_root: &Path,
+    workspace_dirty: bool,
+    workspace_changes: Vec<String>,
+) -> Result<Option<FixDetectedProblem>, String> {
+    let readme = target_root.join("README.md");
+    if !readme.exists() {
+        return Ok(None);
+    }
+    let contents = fs::read_to_string(&readme)
+        .map_err(|error| format!("read {}: {error}", readme.display()))?;
+    let validation_found = contents.contains("cargo fmt --check")
+        && contents.contains("cargo check")
+        && contents.contains("cargo test");
+    if !validation_found {
+        return Ok(None);
+    }
+    if contents.contains("## Usage") {
+        return Ok(None);
+    }
+    Ok(Some(FixDetectedProblem {
+        kind: FixProblemKind::MissingReadmeUsageSection,
+        description: "README usage section missing".to_string(),
+        goal: "Add a minimal README usage section.".to_string(),
+        project_type: "rust".to_string(),
+        files_planned: vec!["README.md".to_string()],
+        validation_commands: rust_validation_commands(),
+        workspace_dirty,
+        workspace_changes,
+        details: Vec::new(),
+    }))
+}
+
+fn detect_missing_gitignore_target(
+    target_root: &Path,
+    workspace_dirty: bool,
+    workspace_changes: Vec<String>,
+) -> Result<Option<FixDetectedProblem>, String> {
+    let gitignore = target_root.join(".gitignore");
+    let contents = fs::read_to_string(&gitignore).unwrap_or_default();
+    if contents.lines().any(|line| line.trim() == "target/") {
+        return Ok(None);
+    }
+    Ok(Some(FixDetectedProblem {
+        kind: FixProblemKind::MissingGitignoreTarget,
+        description: "missing .gitignore target/ entry".to_string(),
+        goal: "Ensure target/ is ignored in .gitignore.".to_string(),
+        project_type: "rust".to_string(),
+        files_planned: vec![".gitignore".to_string()],
         validation_commands: rust_validation_commands(),
         workspace_dirty,
         workspace_changes,
@@ -602,6 +710,17 @@ fn build_rule_based_fix_proposal(
             find: None,
             replace: None,
         }],
+        FixProblemKind::MissingClippyCi => vec![PatchOp {
+            path: ".github/workflows/rust-ci.yml".to_string(),
+            op: PatchOperationKind::ReplaceExactText,
+            description: "Add a clippy step to the existing Rust CI workflow.".to_string(),
+            content: None,
+            find: Some("      - run: cargo test\n".to_string()),
+            replace: Some(
+                "      - run: cargo clippy --all-targets -- -D warnings\n      - run: cargo test\n"
+                    .to_string(),
+            ),
+        }],
         FixProblemKind::MissingSmokeTest => vec![PatchOp {
             path: "tests/eve_smoke.rs".to_string(),
             op: PatchOperationKind::CreateFile,
@@ -630,6 +749,50 @@ fn build_rule_based_fix_proposal(
                     op: PatchOperationKind::CreateFile,
                     description: "Create minimal README with validation section.".to_string(),
                     content: Some(format!("# {}\n{}", package_name(target_root), readme_validation_section())),
+                    find: None,
+                    replace: None,
+                }]
+            }
+        }
+        FixProblemKind::MissingReadmeUsageSection => {
+            let usage_section = readme_usage_section();
+            if target_root.join("README.md").exists() {
+                vec![PatchOp {
+                    path: "README.md".to_string(),
+                    op: PatchOperationKind::AppendFile,
+                    description: "Append a usage section to README.".to_string(),
+                    content: Some(usage_section),
+                    find: None,
+                    replace: None,
+                }]
+            } else {
+                vec![PatchOp {
+                    path: "README.md".to_string(),
+                    op: PatchOperationKind::CreateFile,
+                    description: "Create minimal README with usage section.".to_string(),
+                    content: Some(format!("# {}\n{}", package_name(target_root), usage_section)),
+                    find: None,
+                    replace: None,
+                }]
+            }
+        }
+        FixProblemKind::MissingGitignoreTarget => {
+            let gitignore = target_root.join(".gitignore");
+            if gitignore.exists() {
+                vec![PatchOp {
+                    path: ".gitignore".to_string(),
+                    op: PatchOperationKind::AppendFile,
+                    description: "Append target/ to .gitignore.".to_string(),
+                    content: Some(gitignore_target_entry()),
+                    find: None,
+                    replace: None,
+                }]
+            } else {
+                vec![PatchOp {
+                    path: ".gitignore".to_string(),
+                    op: PatchOperationKind::CreateFile,
+                    description: "Create .gitignore with target/.".to_string(),
+                    content: Some(gitignore_target_entry()),
                     find: None,
                     replace: None,
                 }]
@@ -800,6 +963,14 @@ fn run_fix_validation(
             ),
             run_cargo(target_root.to_str().unwrap_or("."), &["test"]),
         ],
+        FixProblemKind::MissingClippyCi => vec![
+            run_cargo(target_root.to_str().unwrap_or("."), &["fmt", "--check"]),
+            run_cargo(
+                target_root.to_str().unwrap_or("."),
+                &["check", "--all-targets"],
+            ),
+            run_cargo(target_root.to_str().unwrap_or("."), &["test"]),
+        ],
         _ => vec![
             run_cargo(target_root.to_str().unwrap_or("."), &["fmt", "--check"]),
             run_cargo(target_root.to_str().unwrap_or("."), &["check"]),
@@ -931,6 +1102,14 @@ fn readme_validation_section() -> String {
     "\n## Validation\n\n```bash\ncargo fmt --check\ncargo check\ncargo test\n```\n".to_string()
 }
 
+fn readme_usage_section() -> String {
+    "\n## Usage\n\n```bash\ncargo run -- doctor .\ncargo run -- fix . --dry-run --no-llm\ncargo run -- repair-bench\n```\n".to_string()
+}
+
+fn gitignore_target_entry() -> String {
+    "target/\n".to_string()
+}
+
 fn rust_validation_commands() -> Vec<String> {
     vec![
         "cargo fmt --check".to_string(),
@@ -976,8 +1155,11 @@ fn problem_label(kind: &FixProblemKind) -> &'static str {
     match kind {
         FixProblemKind::CargoCheckFailure => "cargo_check_failure",
         FixProblemKind::MissingCi => "missing_ci",
+        FixProblemKind::MissingClippyCi => "missing_clippy_ci",
         FixProblemKind::MissingSmokeTest => "missing_smoke_test",
         FixProblemKind::MissingReadmeValidation => "missing_readme_validation",
+        FixProblemKind::MissingGitignoreTarget => "missing_gitignore_target",
+        FixProblemKind::MissingReadmeUsageSection => "missing_readme_usage_section",
     }
 }
 

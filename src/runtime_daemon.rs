@@ -50,7 +50,7 @@ pub const RUNTIME_CLI_HELP: &str = r#"EVA runtime commands:
 
   cargo run -- fix <TARGET_PATH> --dry-run
   cargo run -- fix <TARGET_PATH> --apply
-  cargo run -- fix <TARGET_PATH> --only cargo-check|ci|tests|docs
+  cargo run -- fix <TARGET_PATH> --only cargo-check|ci|tests|docs|hygiene
       Run the product-facing safe fix facade in dry-run or apply mode.
 
   cargo run -- doctor <TARGET_PATH>
@@ -62,8 +62,15 @@ pub const RUNTIME_CLI_HELP: &str = r#"EVA runtime commands:
 
   cargo run -- repair-bench
   cargo run -- repair-bench --suite phase21
+  cargo run -- repair-bench --suite phase24x
+  cargo run -- repair-bench-history
+  cargo run -- repair-bench-gate
   cargo run -- repair-bench --output .eva/repair-bench
       Run the local repair benchmark suite over isolated temp repos.
+
+  cargo run -- external-trial <REPO_PATH>...
+      Print local history and gate results.
+      Run read-only external trials over local repos without mutating them by default.
 
   cargo run -- plan <TASK_ID>
       Create a deterministic agent plan.

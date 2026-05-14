@@ -56,6 +56,12 @@ pub struct RepairBenchCaseResult {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RepairBenchCaseHistoryStatus {
+    pub case_id: String,
+    pub status: RepairBenchCaseStatus,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RepairBenchEvidencePaths {
     pub output_dir: PathBuf,
     pub request_json: PathBuf,
@@ -67,6 +73,7 @@ pub struct RepairBenchEvidencePaths {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RepairBenchMetricSummary {
     pub total_cases: usize,
+    pub actionable_cases: usize,
     pub passed_cases: usize,
     pub failed_cases: usize,
     pub partial_cases: usize,
@@ -87,6 +94,87 @@ pub struct RepairBenchReport {
     pub partial_cases: usize,
     pub case_results: Vec<RepairBenchCaseResult>,
     pub metrics: RepairBenchMetricSummary,
+    pub output_dir: PathBuf,
+    pub warnings: Vec<String>,
+    pub blockers: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RepairBenchHistoryEntry {
+    pub bench_id: String,
+    pub suite: String,
+    pub status: RepairBenchStatus,
+    pub total_cases: usize,
+    pub passed_cases: usize,
+    pub partial_cases: usize,
+    pub failed_cases: usize,
+    pub detection_success_rate: f64,
+    pub repair_success_rate: f64,
+    pub validation_success_rate: f64,
+    pub evidence_success_rate: f64,
+    pub case_statuses: Vec<RepairBenchCaseHistoryStatus>,
+    pub generated_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RepairBenchHistoryReport {
+    pub output_dir: PathBuf,
+    pub history_path: PathBuf,
+    pub latest_path: PathBuf,
+    pub runs: usize,
+    pub entries: Vec<RepairBenchHistoryEntry>,
+    pub latest: Option<RepairBenchHistoryEntry>,
+    pub warnings: Vec<String>,
+    pub blockers: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum RepairBenchGateStatus {
+    Passed,
+    Warn,
+    Failed,
+    Blocked,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RepairBenchBaseline {
+    pub suite: String,
+    pub total_cases: usize,
+    pub actionable_cases: usize,
+    pub passed_cases: usize,
+    pub partial_cases: usize,
+    pub failed_cases: usize,
+    pub detection_success_rate: f64,
+    pub repair_success_rate: f64,
+    pub validation_success_rate: f64,
+    pub evidence_success_rate: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RepairBenchRegression {
+    pub field: String,
+    pub baseline: String,
+    pub current: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RepairBenchGateRequest {
+    pub suite: String,
+    pub baseline: String,
+    pub baseline_file: Option<PathBuf>,
+    pub output_dir: PathBuf,
+    pub json: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RepairBenchGateReport {
+    pub bench_id: String,
+    pub suite: String,
+    pub status: RepairBenchGateStatus,
+    pub baseline: RepairBenchBaseline,
+    pub current: RepairBenchBaseline,
+    pub current_report: RepairBenchReport,
+    pub regressions: Vec<RepairBenchRegression>,
     pub output_dir: PathBuf,
     pub warnings: Vec<String>,
     pub blockers: Vec<String>,

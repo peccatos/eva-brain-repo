@@ -176,6 +176,21 @@ fn build_findings(
                 code: "rust_ci_found".to_string(),
                 message: "Rust CI workflow found".to_string(),
             });
+            let contents = fs::read_to_string(target_root.join(".github/workflows/rust-ci.yml"))
+                .unwrap_or_default();
+            if contents.contains("cargo clippy --all-targets -- -D warnings") {
+                findings.push(DoctorFinding {
+                    level: DoctorFindingLevel::Ok,
+                    code: "rust_ci_clippy_found".to_string(),
+                    message: "Rust CI clippy step found".to_string(),
+                });
+            } else {
+                findings.push(DoctorFinding {
+                    level: DoctorFindingLevel::Warn,
+                    code: "rust_ci_clippy_missing".to_string(),
+                    message: "Rust CI clippy step missing".to_string(),
+                });
+            }
         } else {
             findings.push(DoctorFinding {
                 level: DoctorFindingLevel::Warn,
@@ -201,10 +216,10 @@ fn build_findings(
         let readme = target_root.join("README.md");
         if readme.exists() {
             let contents = fs::read_to_string(&readme).unwrap_or_default();
-            if contents.contains("cargo fmt --check")
+            let validation_found = contents.contains("cargo fmt --check")
                 && contents.contains("cargo check")
-                && contents.contains("cargo test")
-            {
+                && contents.contains("cargo test");
+            if validation_found {
                 findings.push(DoctorFinding {
                     level: DoctorFindingLevel::Ok,
                     code: "readme_validation_found".to_string(),
@@ -217,11 +232,45 @@ fn build_findings(
                     message: "README validation section missing".to_string(),
                 });
             }
+            if validation_found {
+                if contents.contains("## Usage") {
+                    findings.push(DoctorFinding {
+                        level: DoctorFindingLevel::Ok,
+                        code: "readme_usage_found".to_string(),
+                        message: "README usage section found".to_string(),
+                    });
+                } else {
+                    findings.push(DoctorFinding {
+                        level: DoctorFindingLevel::Warn,
+                        code: "readme_usage_missing".to_string(),
+                        message: "README usage section missing".to_string(),
+                    });
+                }
+            }
         } else {
             findings.push(DoctorFinding {
                 level: DoctorFindingLevel::Info,
                 code: "readme_missing".to_string(),
                 message: "README missing".to_string(),
+            });
+        }
+
+        let gitignore = target_root.join(".gitignore");
+        let gitignore_contents = fs::read_to_string(&gitignore).unwrap_or_default();
+        if gitignore_contents
+            .lines()
+            .any(|line| line.trim() == "target/")
+        {
+            findings.push(DoctorFinding {
+                level: DoctorFindingLevel::Ok,
+                code: "gitignore_target_found".to_string(),
+                message: ".gitignore target/ entry found".to_string(),
+            });
+        } else {
+            findings.push(DoctorFinding {
+                level: DoctorFindingLevel::Warn,
+                code: "gitignore_target_missing".to_string(),
+                message: ".gitignore target/ entry missing".to_string(),
             });
         }
     }
@@ -252,6 +301,10 @@ fn build_suggestions(findings: &[DoctorFinding], target_root: &Path) -> Vec<Doct
                 command: format!("cargo run -- fix {target} --only ci"),
                 reason: "add the missing Rust CI workflow".to_string(),
             }),
+            "rust_ci_clippy_missing" => suggestions.push(DoctorSuggestion {
+                command: format!("cargo run -- fix {target} --only ci"),
+                reason: "add a clippy step to Rust CI".to_string(),
+            }),
             "smoke_test_missing" => suggestions.push(DoctorSuggestion {
                 command: format!("cargo run -- fix {target} --only tests"),
                 reason: "add a smoke test".to_string(),
@@ -259,6 +312,14 @@ fn build_suggestions(findings: &[DoctorFinding], target_root: &Path) -> Vec<Doct
             "readme_validation_missing" => suggestions.push(DoctorSuggestion {
                 command: format!("cargo run -- fix {target} --only docs"),
                 reason: "add a README validation section".to_string(),
+            }),
+            "readme_usage_missing" => suggestions.push(DoctorSuggestion {
+                command: format!("cargo run -- fix {target} --only docs"),
+                reason: "add a README usage section".to_string(),
+            }),
+            "gitignore_target_missing" => suggestions.push(DoctorSuggestion {
+                command: format!("cargo run -- fix {target} --only hygiene"),
+                reason: "ignore target/ in .gitignore".to_string(),
             }),
             _ => {}
         }

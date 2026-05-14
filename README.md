@@ -260,6 +260,25 @@ See also:
 
 - `docs/phase_23_repair_benchmark.md`
 
+## EVE Repair Quality Gate
+
+```bash
+cargo run -- repair-bench
+cargo run -- repair-bench-history
+cargo run -- repair-bench-gate
+cargo run -- repair-bench --suite phase24x
+```
+
+`repair-bench-gate` compares repair performance against a baseline and reports regressions before new repair capabilities are trusted.
+
+## EVE External Trial
+
+```bash
+cargo run -- external-trial /path/to/repo
+```
+
+`external-trial` runs read-only diagnostics and fix dry-runs against local repositories without mutating them by default.
+
 ## Validation
 
 ```bash

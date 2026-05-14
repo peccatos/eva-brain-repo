@@ -1,6 +1,7 @@
 pub mod apply;
 pub mod approve;
 pub mod doctor;
+pub mod external_trial;
 pub mod fix;
 pub mod inspect;
 pub mod outcome;
@@ -22,6 +23,7 @@ pub mod validate;
 pub use apply::{apply_proposal, dry_run_apply, print_apply_dry_run, print_apply_proposal};
 pub use approve::{approve_proposal, print_approve_proposal};
 pub use doctor::{print_doctor, run_doctor};
+pub use external_trial::{print_external_trial, run_external_trial};
 pub use fix::{print_fix, run_fix};
 pub use inspect::{inspect_workspace, print_workspace_inspection};
 pub use outcome::{
@@ -37,7 +39,11 @@ pub use propose::{
 };
 pub use readiness::{build_production_agent_readiness, print_agent_readiness};
 pub use readiness_v2::{build_production_agent_v2_readiness, print_agent_v2_readiness};
-pub use repair_bench::{print_repair_bench, run_repair_bench};
+pub use repair_bench::{
+    benchmark_from_report, detect_repair_bench_regressions, print_repair_bench,
+    print_repair_bench_gate, print_repair_bench_history, run_repair_bench, run_repair_bench_gate,
+    run_repair_bench_history,
+};
 pub use repo_map::{build_repo_map, print_repo_map};
 pub use report::{build_agent_report, print_agent_report};
 pub use safe_paths::{validate_patch_path, SafePathError};
