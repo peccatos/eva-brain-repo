@@ -1,5 +1,6 @@
 pub mod apply;
 pub mod approve;
+pub mod doctor;
 pub mod fix;
 pub mod inspect;
 pub mod outcome;
@@ -19,6 +20,7 @@ pub mod validate;
 
 pub use apply::{apply_proposal, dry_run_apply, print_apply_dry_run, print_apply_proposal};
 pub use approve::{approve_proposal, print_approve_proposal};
+pub use doctor::{print_doctor, run_doctor};
 pub use fix::{print_fix, run_fix};
 pub use inspect::{inspect_workspace, print_workspace_inspection};
 pub use outcome::{

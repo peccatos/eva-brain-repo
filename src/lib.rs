@@ -28,12 +28,12 @@ pub use agent::{
     build_task_outcome, create_task, dry_run_apply, inspect_workspace, list_specimens,
     list_task_outcomes, list_tasks, plan_task, plan_task_with_provider, print_agent_readiness,
     print_agent_report, print_agent_v2_readiness, print_apply_dry_run, print_apply_proposal,
-    print_approve_proposal, print_create_task, print_fix, print_plan_task,
+    print_approve_proposal, print_create_task, print_doctor, print_fix, print_plan_task,
     print_pr_summary_for_task, print_proposal_show, print_propose_task, print_repo_map,
     print_show_task, print_specimen_add, print_specimen_list, print_task_outcome,
     print_task_outcomes, print_tasks, print_validation_run, print_workspace_inspection,
     proposal_from_llm_response, propose_task, propose_task_with_provider,
-    refresh_all_task_outcomes, run_fix, run_validation, show_task, validate_patch_path,
+    refresh_all_task_outcomes, run_doctor, run_fix, run_validation, show_task, validate_patch_path,
 };
 pub use benchmark_case_loader::BenchmarkCaseLoader;
 pub use benchmark_contract::{
@@ -47,7 +47,9 @@ pub use contracts::{
     AgentApproval, AgentPlan, AgentReport, AgentTask, AgentTaskStatus, AgentValidationStatus,
     ApplyResult, ApplyStatus, ApprovalStatus, ArtifactAuditReport, CandidateQueueSummary,
     CandidateState, CapabilityPolicy, CommandResult, CorpusIngestContract, DeniedMutationKind,
-    DeterminismAuditReport, EvidenceBundle, EvolutionLogEntry, EvolutionReport, EvolutionStatus,
+    DeterminismAuditReport, DoctorEvidencePaths, DoctorFinding, DoctorFindingLevel,
+    DoctorProjectType, DoctorReport, DoctorRequest, DoctorStatus, DoctorSuggestion,
+    DoctorValidationSummary, EvidenceBundle, EvolutionLogEntry, EvolutionReport, EvolutionStatus,
     ExternalPatchPackage, FinalRcReport, FitnessDecision, FixDetectedProblem, FixEvidencePaths,
     FixMode, FixOnly, FixProblemKind, FixReport, FixRequest, FixRiskCap, FixStatus,
     FuturePhaseEntry, FuturePhaseRegistry, GovernanceStatus, GovernanceTrustGate, LlmPurpose,
