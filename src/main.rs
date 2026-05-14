@@ -29,8 +29,8 @@ use eva_runtime_with_task_validator::{
     print_release_bundle_json, print_release_changelog, print_release_health,
     print_release_health_json, print_release_ledger, print_release_ledger_json,
     print_release_manifest, print_release_preflight_json, print_release_proposal,
-    print_release_proposal_json, print_release_status, print_repo_map, print_report,
-    print_rollback_manifest, print_runtime_candidate, print_runtime_cli_contract,
+    print_release_proposal_json, print_release_status, print_repair_bench, print_repo_map,
+    print_report, print_rollback_manifest, print_runtime_candidate, print_runtime_cli_contract,
     print_runtime_service, print_runtime_validation, print_self_improve_propose, print_show_task,
     print_specimen_add, print_specimen_list, print_strategy_memory, print_strategy_portfolio,
     print_strategy_select, print_supervised_run_report, print_task_outcome, print_task_outcomes,
@@ -43,8 +43,8 @@ use eva_runtime_with_task_validator::{
     run_planned_cycles, run_planned_evolution_cycle, run_recombined_evolution_cycle,
     run_repo_patch_report, run_stored_campaign, run_task_from_path, run_tui, serve_runtime_daemon,
     should_run_repo_patch_mode, suggest_strategy_tasks, supervise_task, CycleInput, DoctorRequest,
-    FixOnly, FixRequest, FixRiskCap, RepoPatchCliConfig, RuntimeCliCommand, RuntimeCycleRunner,
-    RUNTIME_CLI_HELP,
+    FixOnly, FixRequest, FixRiskCap, RepairBenchRequest, RepoPatchCliConfig, RuntimeCliCommand,
+    RuntimeCycleRunner, RUNTIME_CLI_HELP,
 };
 use serde::Deserialize;
 use std::fs;
@@ -1525,6 +1525,9 @@ fn handle_agent_cli(args: &[String]) -> Option<Result<String, String>> {
         "doctor" | "--doctor" if args.len() >= 2 => {
             Some(parse_doctor_cli(args).and_then(print_doctor))
         }
+        "repair-bench" | "--repair-bench" => {
+            Some(parse_repair_bench_cli(args).and_then(print_repair_bench))
+        }
         "task" | "--task" if args.len() >= 2 => {
             Some(print_create_task("memory", &args[1..].join(" ")))
         }
@@ -1725,6 +1728,50 @@ fn parse_doctor_cli(args: &[String]) -> Result<DoctorRequest, String> {
         json,
         no_llm,
         evidence_dir,
+    })
+}
+
+fn parse_repair_bench_cli(args: &[String]) -> Result<RepairBenchRequest, String> {
+    let mut suite = "phase21".to_string();
+    let mut output_dir = PathBuf::from(".eva/repair-bench");
+    let mut json = false;
+    let mut no_llm = true;
+
+    let mut index = 1usize;
+    while index < args.len() {
+        match args[index].as_str() {
+            "--suite" => {
+                let value = args
+                    .get(index + 1)
+                    .ok_or_else(|| "missing value for --suite".to_string())?;
+                suite = value.clone();
+                index += 2;
+            }
+            "--output" => {
+                let value = args
+                    .get(index + 1)
+                    .ok_or_else(|| "missing value for --output".to_string())?;
+                output_dir = PathBuf::from(value);
+                index += 2;
+            }
+            "--json" => {
+                json = true;
+                index += 1;
+            }
+            "--no-llm" => {
+                no_llm = true;
+                index += 1;
+            }
+            other => return Err(format!("unsupported repair-bench argument: {other}")),
+        }
+    }
+
+    Ok(RepairBenchRequest {
+        bench_id: eva_runtime_with_task_validator::agent::storage::id("repair-bench"),
+        suite,
+        output_dir,
+        no_llm,
+        json,
     })
 }
 

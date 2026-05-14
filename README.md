@@ -246,3 +246,16 @@ See also:
 - `docs/phase_18_outcome_learning.md`
 - `docs/phase_19_work_fitness.md`
 - `docs/phase_20_governed_self_improvement.md`
+
+## EVE Repair Bench
+
+```bash
+cargo run -- repair-bench
+cargo run -- repair-bench --json
+```
+
+`repair-bench` runs isolated local repair cases and reports how well `fix` performs. It does not mutate the EVE source tree.
+
+See also:
+
+- `docs/phase_23_repair_benchmark.md`

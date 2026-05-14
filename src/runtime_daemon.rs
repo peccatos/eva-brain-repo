@@ -60,6 +60,11 @@ pub const RUNTIME_CLI_HELP: &str = r#"EVA runtime commands:
   cargo run -- doctor <TARGET_PATH> --validate
       Print a JSON report or run optional validation with side-effect tracking.
 
+  cargo run -- repair-bench
+  cargo run -- repair-bench --suite phase21
+  cargo run -- repair-bench --output .eva/repair-bench
+      Run the local repair benchmark suite over isolated temp repos.
+
   cargo run -- plan <TASK_ID>
       Create a deterministic agent plan.
 

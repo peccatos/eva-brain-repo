@@ -89,3 +89,4 @@ memory/strategy_memory/
 memory/fitness/
 memory/self_improvement/
 .eva/fix/
+.eva/repair-bench/

@@ -43,6 +43,7 @@ pub mod release_health;
 pub mod release_ledger;
 pub mod release_manifest;
 pub mod release_proposal;
+pub mod repair_bench;
 pub mod repo_map;
 pub mod rollback_manifest;
 pub mod runtime_candidate;
@@ -121,6 +122,10 @@ pub use release_health::ReleaseHealthReport;
 pub use release_ledger::ReleaseLedgerRecord;
 pub use release_manifest::ReleaseManifest;
 pub use release_proposal::{ReleaseProposal, ReleaseProposalItem};
+pub use repair_bench::{
+    RepairBenchCase, RepairBenchCaseResult, RepairBenchCaseStatus, RepairBenchEvidencePaths,
+    RepairBenchMetricSummary, RepairBenchReport, RepairBenchRequest, RepairBenchStatus,
+};
 pub use repo_map::{RepoMap, RepoModule};
 pub use rollback_manifest::RollbackManifest;
 pub use runtime_candidate::RuntimeCandidateManifest;

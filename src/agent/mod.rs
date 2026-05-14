@@ -9,6 +9,7 @@ pub mod pr_summary;
 pub mod propose;
 pub mod readiness;
 pub mod readiness_v2;
+pub mod repair_bench;
 pub mod repo_map;
 pub mod report;
 pub mod safe_paths;
@@ -36,6 +37,7 @@ pub use propose::{
 };
 pub use readiness::{build_production_agent_readiness, print_agent_readiness};
 pub use readiness_v2::{build_production_agent_v2_readiness, print_agent_v2_readiness};
+pub use repair_bench::{print_repair_bench, run_repair_bench};
 pub use repo_map::{build_repo_map, print_repo_map};
 pub use report::{build_agent_report, print_agent_report};
 pub use safe_paths::{validate_patch_path, SafePathError};
