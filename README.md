@@ -233,6 +233,18 @@ cargo run -- fix . --only tests
 See also:
 
 - `docs/phase_21_eve_fix.md`
+
+## EVE Fix proof
+
+`eve fix` has an external proof pack covering:
+
+- missing Rust CI;
+- missing smoke test;
+- README validation section;
+- simple missing module compile repair;
+- unknown project handling.
+
+See `docs/proofs/phase_21_fix_proof_pack.md`.
 - `docs/phase_18_outcome_learning.md`
 - `docs/phase_19_work_fitness.md`
 - `docs/phase_20_governed_self_improvement.md`
