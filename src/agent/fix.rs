@@ -11,9 +11,12 @@ use crate::llm::prompts::AGENT_SYSTEM_PROMPT;
 use crate::llm::schemas::PATCH_PROPOSAL_SCHEMA;
 use crate::llm::{select_llm_provider_from_env, selected_llm_provider_name_from_env, LlmProvider};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 pub fn run_fix(request: FixRequest) -> Result<FixReport, String> {
+    if let Some(report) = blocked_target_report(&request) {
+        return Ok(report);
+    }
     let target_root = request
         .target_path
         .canonicalize()
@@ -226,7 +229,7 @@ pub fn print_fix(request: FixRequest) -> Result<String, String> {
         FixStatus::Blocked => "blocked",
     };
     Ok(format!(
-        "EVE Fix Report\n\nTarget: {}\nMode: {}\nProject type: {}\nWorkspace dirty: {}\nSource mutation: {}\nEvidence written: {}\n\nDetected problem:\n  {}\n\nProposed fix:\n  {}\n\nRisk:\n  {}\n\nFiles:\n  {}\n\nValidation plan:\n  {}\n\nStatus:\n  {}\n\nEvidence:\n  {}\n{}\n{}\n{}\n{}",
+        "EVE Fix Report\n\nTarget: {}\nMode: {}\nProject type: {}\nWorkspace dirty: {}\nSource mutation: {}\nEvidence written: {}\n\nDetected problem:\n  {}\n\nProposed fix:\n  {}\n\nRisk:\n  {}\n\nFiles:\n  {}\n\nValidation plan:\n  {}\n\nStatus:\n  {}\n{}\n{}\n{}\n{}\n{}",
         display_rel(&report.target_path),
         mode,
         report.project_type,
@@ -251,7 +254,11 @@ pub fn print_fix(request: FixRequest) -> Result<String, String> {
             report.validation_commands.join(", ")
         },
         status,
-        report.evidence_dir.display(),
+        if report.evidence_written {
+            format!("\nEvidence:\n  {}", report.evidence_dir.display())
+        } else {
+            "\nEvidence:\n  none".to_string()
+        },
         if report.warnings.is_empty() {
             String::new()
         } else {
@@ -324,6 +331,49 @@ fn detect_problem(
         }
     }
     Ok(None)
+}
+
+fn blocked_target_report(request: &FixRequest) -> Option<FixReport> {
+    if !request.target_path.exists() {
+        return Some(blocked_report(
+            request,
+            "target_path_does_not_exist",
+            request.target_path.clone(),
+        ));
+    }
+    if !request.target_path.is_dir() {
+        return Some(blocked_report(
+            request,
+            "target_path_not_directory",
+            request.target_path.clone(),
+        ));
+    }
+    None
+}
+
+fn blocked_report(request: &FixRequest, blocker: &str, target_path: PathBuf) -> FixReport {
+    FixReport {
+        fix_id: request.fix_id.clone(),
+        target_path,
+        mode: mode_for(request),
+        project_type: "unknown".to_string(),
+        workspace_dirty: false,
+        detected_problem: None,
+        risk: "low".to_string(),
+        files_planned: Vec::new(),
+        files_changed_by_patch: Vec::new(),
+        files_changed_after_validation: Vec::new(),
+        validation_side_effects: Vec::new(),
+        validation_commands: Vec::new(),
+        status: FixStatus::Blocked,
+        evidence_dir: PathBuf::new(),
+        source_mutation: false,
+        evidence_written: false,
+        warnings: Vec::new(),
+        blockers: vec![blocker.to_string()],
+        provider: "not_run".to_string(),
+        llm_used: false,
+    }
 }
 
 fn detect_cargo_check_failure(

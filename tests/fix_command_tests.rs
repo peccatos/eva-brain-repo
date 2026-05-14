@@ -22,6 +22,92 @@ fn dry_run_does_not_mutate_missing_ci_project() {
 }
 
 #[test]
+fn fix_blocks_missing_target_path() {
+    let root = evolution_test_support::unique_evolution_root("fix-missing-target");
+    let target = root.join("does-not-exist").join("repo");
+    let report = run_fix(FixRequest {
+        fix_id: unique_fix_id("missing-target"),
+        target_path: target.clone(),
+        dry_run: false,
+        apply: true,
+        only: Some(FixOnly::Ci),
+        max_files: 3,
+        risk_cap: FixRiskCap::Low,
+        no_llm: true,
+        provider: Some("rule_based".to_string()),
+        evidence_dir: PathBuf::from(".eva/fix"),
+    })
+    .expect("blocked fix report");
+    assert_eq!(report.status, FixStatus::Blocked);
+    assert!(report
+        .blockers
+        .iter()
+        .any(|blocker| blocker == "target_path_does_not_exist"));
+    assert!(!report.source_mutation);
+    assert!(!report.evidence_written);
+    assert!(report.evidence_dir.as_os_str().is_empty());
+    assert!(!target.exists());
+    assert!(!root.join("does-not-exist").exists());
+    assert!(!root.join(".eva").exists());
+    evolution_test_support::remove_root(&root);
+}
+
+#[test]
+fn fix_blocks_file_target_path() {
+    let root = evolution_test_support::unique_evolution_root("fix-file-target");
+    let file_target = root.join("not_a_repo.txt");
+    fs::write(&file_target, "content").expect("file");
+    let report = run_fix(FixRequest {
+        fix_id: unique_fix_id("file-target"),
+        target_path: file_target.clone(),
+        dry_run: false,
+        apply: true,
+        only: Some(FixOnly::Ci),
+        max_files: 3,
+        risk_cap: FixRiskCap::Low,
+        no_llm: true,
+        provider: Some("rule_based".to_string()),
+        evidence_dir: PathBuf::from(".eva/fix"),
+    })
+    .expect("blocked fix report");
+    assert_eq!(report.status, FixStatus::Blocked);
+    assert!(report
+        .blockers
+        .iter()
+        .any(|blocker| blocker == "target_path_not_directory"));
+    assert!(!report.source_mutation);
+    assert!(!report.evidence_written);
+    assert!(report.evidence_dir.as_os_str().is_empty());
+    assert!(file_target.exists());
+    assert!(!root.join(".eva").exists());
+    evolution_test_support::remove_root(&root);
+}
+
+#[test]
+fn fix_invalid_target_does_not_select_openai() {
+    let root = evolution_test_support::unique_evolution_root("fix-invalid-openai");
+    let target = root.join("missing").join("repo");
+    let report = run_fix(FixRequest {
+        fix_id: unique_fix_id("invalid-openai"),
+        target_path: target,
+        dry_run: false,
+        apply: true,
+        only: Some(FixOnly::Ci),
+        max_files: 3,
+        risk_cap: FixRiskCap::Low,
+        no_llm: false,
+        provider: Some("openai".to_string()),
+        evidence_dir: PathBuf::from(".eva/fix"),
+    })
+    .expect("blocked fix report");
+    assert_eq!(report.status, FixStatus::Blocked);
+    assert!(!report.llm_used);
+    assert_ne!(report.provider, "openai");
+    assert!(report.warnings.is_empty());
+    evolution_test_support::remove_root(&root);
+}
+
+#[test]
 fn apply_missing_ci_creates_workflow_and_evidence() {
     let root = rust_fixture("fix-apply-ci", true);
     let report =
