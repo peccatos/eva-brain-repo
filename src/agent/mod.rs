@@ -23,10 +23,13 @@ pub use outcome::{
     build_task_outcome, list_task_outcomes, print_task_outcome, print_task_outcomes,
     refresh_all_task_outcomes,
 };
-pub use plan::{plan_task, print_plan_task};
+pub use plan::{plan_task, plan_task_with_provider, print_plan_task};
 pub use pr_summary::{build_pr_summary_for_task, print_pr_summary_for_task};
 pub use propose::proposal_from_llm_response;
-pub use propose::{print_proposal_show, print_propose_task, propose_task, validate_patch_proposal};
+pub use propose::{
+    print_proposal_show, print_propose_task, propose_task, propose_task_with_provider,
+    validate_patch_proposal,
+};
 pub use readiness::{build_production_agent_readiness, print_agent_readiness};
 pub use readiness_v2::{build_production_agent_v2_readiness, print_agent_v2_readiness};
 pub use repo_map::{build_repo_map, print_repo_map};

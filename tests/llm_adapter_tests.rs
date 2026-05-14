@@ -1,6 +1,8 @@
 #[path = "evolution_test_support.rs"]
 mod evolution_test_support;
 
+use std::sync::{Mutex, OnceLock};
+
 use eva_runtime_with_task_validator::contracts::{LlmPurpose, LlmRequest, LlmStatus};
 use eva_runtime_with_task_validator::llm::openai::responses_api_payload;
 use eva_runtime_with_task_validator::llm::{
@@ -9,7 +11,10 @@ use eva_runtime_with_task_validator::llm::{
 
 #[test]
 fn missing_openai_key_falls_back_to_rule_based_health_without_key_leak() {
+    let _guard = env_lock().lock().expect("env lock");
     std::env::remove_var("OPENAI_API_KEY");
+    std::env::remove_var("EVE_LLM_MODE");
+    std::env::remove_var("EVE_LLM_PROVIDER");
     let health = llm_health();
     assert!(health.contains("provider=rule_based"));
     assert!(health.contains("fallback_available=true"));
@@ -18,6 +23,7 @@ fn missing_openai_key_falls_back_to_rule_based_health_without_key_leak() {
 
 #[test]
 fn openai_key_selects_openai_health_without_key_leak() {
+    let _guard = env_lock().lock().expect("env lock");
     std::env::set_var("OPENAI_API_KEY", "sk-test-secret");
     std::env::remove_var("EVE_LLM_MODE");
     std::env::remove_var("EVE_LLM_PROVIDER");
@@ -86,4 +92,9 @@ fn request(input: &str) -> LlmRequest {
         max_output_tokens: 128,
         temperature: 0.0,
     }
+}
+
+fn env_lock() -> &'static Mutex<()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
 }
