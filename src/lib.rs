@@ -26,13 +26,14 @@ pub use agent::{
     add_specimen, apply_proposal, approve_proposal, build_agent_report, build_pr_summary_for_task,
     build_production_agent_readiness, build_production_agent_v2_readiness, build_repo_map,
     build_task_outcome, create_task, dry_run_apply, inspect_workspace, list_specimens,
-    list_task_outcomes, list_tasks, plan_task, print_agent_readiness, print_agent_report,
-    print_agent_v2_readiness, print_apply_dry_run, print_apply_proposal, print_approve_proposal,
-    print_create_task, print_plan_task, print_pr_summary_for_task, print_proposal_show,
-    print_propose_task, print_repo_map, print_show_task, print_specimen_add, print_specimen_list,
-    print_task_outcome, print_task_outcomes, print_tasks, print_validation_run,
-    print_workspace_inspection, proposal_from_llm_response, propose_task,
-    refresh_all_task_outcomes, run_validation, show_task, validate_patch_path,
+    list_task_outcomes, list_tasks, plan_task, plan_task_with_provider, print_agent_readiness,
+    print_agent_report, print_agent_v2_readiness, print_apply_dry_run, print_apply_proposal,
+    print_approve_proposal, print_create_task, print_plan_task, print_pr_summary_for_task,
+    print_proposal_show, print_propose_task, print_repo_map, print_show_task, print_specimen_add,
+    print_specimen_list, print_task_outcome, print_task_outcomes, print_tasks,
+    print_validation_run, print_workspace_inspection, proposal_from_llm_response, propose_task,
+    propose_task_with_provider, refresh_all_task_outcomes, run_validation, show_task,
+    validate_patch_path,
 };
 pub use benchmark_case_loader::BenchmarkCaseLoader;
 pub use benchmark_contract::{

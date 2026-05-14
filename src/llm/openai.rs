@@ -1,6 +1,8 @@
 use crate::contracts::{LlmRequest, LlmResponse, LlmStatus};
 use crate::llm::provider::LlmProvider;
+use crate::llm::rule_based::RuleBasedLlmProvider;
 use crate::llm::sanitize::sanitize_llm_context;
+use crate::llm::schemas::schema_for;
 use serde_json::{json, Value};
 
 #[derive(Debug, Clone)]
@@ -93,20 +95,20 @@ impl LlmProvider for OpenAiLlmProvider {
 pub fn responses_api_payload(request: &LlmRequest, sanitized_input: &str, model: &str) -> Value {
     let mut payload = json!({
         "model": model,
-        "input": format!("{}\n\n{}", request.system_prompt, sanitized_input),
-        "max_output_tokens": request.max_output_tokens,
-        "temperature": request.temperature
+        "instructions": request.system_prompt,
+        "input": sanitized_input,
+        "max_output_tokens": request.max_output_tokens
     });
+    if request.temperature > 0.0 {
+        payload["temperature"] = json!(request.temperature);
+    }
     if !request.expected_schema.trim().is_empty() {
         payload["text"] = json!({
             "format": {
                 "type": "json_schema",
                 "name": request.expected_schema,
                 "strict": true,
-                "schema": {
-                    "type": "object",
-                    "additionalProperties": true
-                }
+                "schema": schema_for(&request.expected_schema)
             }
         });
     }
@@ -132,7 +134,7 @@ fn extract_output_text(body: &Value) -> String {
         .join("\n")
 }
 
-pub fn llm_health() -> String {
+pub fn openai_selected_from_env() -> bool {
     let configured = std::env::var("OPENAI_API_KEY")
         .ok()
         .filter(|v| !v.is_empty())
@@ -151,12 +153,32 @@ pub fn llm_health() -> String {
             "rule_based".to_string()
         }
     });
-    let model = std::env::var("EVE_OPENAI_MODEL").unwrap_or_else(|_| "gpt-5.5".to_string());
-    let provider = if configured && mode != "rule_based" && provider_env == "openai" {
+    configured && mode != "rule_based" && provider_env == "openai"
+}
+
+pub fn selected_llm_provider_name_from_env() -> &'static str {
+    if openai_selected_from_env() {
         "openai"
     } else {
         "rule_based"
-    };
+    }
+}
+
+pub fn select_llm_provider_from_env() -> Box<dyn LlmProvider> {
+    if openai_selected_from_env() {
+        Box::new(OpenAiLlmProvider::default())
+    } else {
+        Box::new(RuleBasedLlmProvider)
+    }
+}
+
+pub fn llm_health() -> String {
+    let configured = std::env::var("OPENAI_API_KEY")
+        .ok()
+        .filter(|v| !v.is_empty())
+        .is_some();
+    let model = std::env::var("EVE_OPENAI_MODEL").unwrap_or_else(|_| "gpt-5.5".to_string());
+    let provider = selected_llm_provider_name_from_env();
     format!(
         "EVA LLM Health\nprovider={provider}\nopenai_configured={configured}\nmodel={model}\nfallback_available=true\nstatus={}\n",
         if configured || provider == "rule_based" { "ok" } else { "not_configured" }
