@@ -14,9 +14,9 @@ use eva_runtime_with_task_validator::{
     print_apply_proposal, print_approve_proposal, print_artifact_audit, print_artifact_audit_json,
     print_benchmark, print_bounded_run_report, print_campaign, print_campaign_report,
     print_capability_policy, print_create_task, print_determinism_audit,
-    print_determinism_audit_json, print_eva_status, print_evolution_policy, print_final_rc_report,
-    print_fitness, print_fix, print_future_phases, print_future_phases_json, print_hygiene_plan,
-    print_hygiene_report, print_last_bounded_run, print_last_campaign_report,
+    print_determinism_audit_json, print_doctor, print_eva_status, print_evolution_policy,
+    print_final_rc_report, print_fitness, print_fix, print_future_phases, print_future_phases_json,
+    print_hygiene_plan, print_hygiene_report, print_last_bounded_run, print_last_campaign_report,
     print_last_evidence_bundle, print_last_external_patch_package, print_last_pr_package,
     print_last_recovery_manifest, print_last_release, print_last_report,
     print_last_self_review_package, print_last_supervised_run, print_last_task_adjustment,
@@ -42,8 +42,8 @@ use eva_runtime_with_task_validator::{
     review_candidate, run_benchmark, run_bounded_evolution, run_demo, run_evolution_cycle,
     run_planned_cycles, run_planned_evolution_cycle, run_recombined_evolution_cycle,
     run_repo_patch_report, run_stored_campaign, run_task_from_path, run_tui, serve_runtime_daemon,
-    should_run_repo_patch_mode, suggest_strategy_tasks, supervise_task, CycleInput, FixOnly,
-    FixRequest, FixRiskCap, RepoPatchCliConfig, RuntimeCliCommand, RuntimeCycleRunner,
+    should_run_repo_patch_mode, suggest_strategy_tasks, supervise_task, CycleInput, DoctorRequest,
+    FixOnly, FixRequest, FixRiskCap, RepoPatchCliConfig, RuntimeCliCommand, RuntimeCycleRunner,
     RUNTIME_CLI_HELP,
 };
 use serde::Deserialize;
@@ -1522,6 +1522,9 @@ fn handle_agent_cli(args: &[String]) -> Option<Result<String, String>> {
     }
     match args[0].as_str() {
         "fix" | "--fix" if args.len() >= 2 => Some(parse_fix_cli(args).and_then(print_fix)),
+        "doctor" | "--doctor" if args.len() >= 2 => {
+            Some(parse_doctor_cli(args).and_then(print_doctor))
+        }
         "task" | "--task" if args.len() >= 2 => {
             Some(print_create_task("memory", &args[1..].join(" ")))
         }
@@ -1673,6 +1676,54 @@ fn parse_fix_cli(args: &[String]) -> Result<FixRequest, String> {
         risk_cap,
         no_llm,
         provider,
+        evidence_dir,
+    })
+}
+
+fn parse_doctor_cli(args: &[String]) -> Result<DoctorRequest, String> {
+    let mut target_path = None::<PathBuf>;
+    let mut validate = false;
+    let mut json = false;
+    let mut no_llm = false;
+    let mut evidence_dir = PathBuf::from(".eva/doctor");
+
+    let mut index = 1usize;
+    while index < args.len() {
+        match args[index].as_str() {
+            "--validate" => {
+                validate = true;
+                index += 1;
+            }
+            "--json" => {
+                json = true;
+                index += 1;
+            }
+            "--no-llm" => {
+                no_llm = true;
+                index += 1;
+            }
+            "--evidence-dir" => {
+                let value = args
+                    .get(index + 1)
+                    .ok_or_else(|| "missing value for --evidence-dir".to_string())?;
+                evidence_dir = PathBuf::from(value);
+                index += 2;
+            }
+            value if target_path.is_none() => {
+                target_path = Some(PathBuf::from(value));
+                index += 1;
+            }
+            other => return Err(format!("unsupported doctor argument: {other}")),
+        }
+    }
+
+    let target_path = target_path.ok_or_else(|| "missing doctor target path".to_string())?;
+    Ok(DoctorRequest {
+        doctor_id: eva_runtime_with_task_validator::agent::storage::id("doctor"),
+        target_path,
+        validate,
+        json,
+        no_llm,
         evidence_dir,
     })
 }

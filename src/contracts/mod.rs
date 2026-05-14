@@ -9,6 +9,7 @@ pub mod capability_policy;
 pub mod corpus_contract;
 pub mod determinism_audit;
 pub mod digest;
+pub mod doctor;
 pub mod evidence_bundle;
 pub mod evolution_core_readiness;
 pub mod evolution_log;
@@ -78,6 +79,10 @@ pub use capability_policy::CapabilityPolicy;
 pub use corpus_contract::CorpusIngestContract;
 pub use determinism_audit::DeterminismAuditReport;
 pub use digest::{sha256_digest, tail};
+pub use doctor::{
+    DoctorEvidencePaths, DoctorFinding, DoctorFindingLevel, DoctorProjectType, DoctorReport,
+    DoctorRequest, DoctorStatus, DoctorSuggestion, DoctorValidationSummary,
+};
 pub use evidence_bundle::EvidenceBundle;
 pub use evolution_core_readiness::EvolutionCoreReadiness;
 pub use evolution_log::{EvolutionLogEntry, EvolutionStatus, ValidationStatus};

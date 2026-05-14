@@ -230,9 +230,19 @@ cargo run -- fix . --only tests
 
 `fix` is a safe facade command over EVE's governed repair pipeline. It detects one actionable issue, proposes a minimal patch, stores evidence, and only mutates files with `--apply`.
 
+## EVE Doctor
+
+```bash
+cargo run -- doctor .
+cargo run -- doctor . --validate
+```
+
+`doctor` is a read-only diagnostic command. It inspects project health, reports findings, and suggests safe `fix` commands. It does not mutate source files by default.
+
 See also:
 
 - `docs/phase_21_eve_fix.md`
+- `docs/phase_22_eve_doctor.md`
 - `docs/phase_18_outcome_learning.md`
 - `docs/phase_19_work_fitness.md`
 - `docs/phase_20_governed_self_improvement.md`

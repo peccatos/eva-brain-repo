@@ -53,6 +53,13 @@ pub const RUNTIME_CLI_HELP: &str = r#"EVA runtime commands:
   cargo run -- fix <TARGET_PATH> --only cargo-check|ci|tests|docs
       Run the product-facing safe fix facade in dry-run or apply mode.
 
+  cargo run -- doctor <TARGET_PATH>
+      Inspect a target project read-only and suggest safe fix commands.
+
+  cargo run -- doctor <TARGET_PATH> --json
+  cargo run -- doctor <TARGET_PATH> --validate
+      Print a JSON report or run optional validation with side-effect tracking.
+
   cargo run -- plan <TASK_ID>
       Create a deterministic agent plan.
 
