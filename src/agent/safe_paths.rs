@@ -55,6 +55,7 @@ pub fn validate_patch_path(path: &str) -> Result<(), SafePathError> {
         return Err(SafePathError::Forbidden(trimmed.to_string()));
     }
     if trimmed == "README.md"
+        || trimmed.starts_with(".github/workflows/")
         || trimmed.starts_with("src/")
         || trimmed.starts_with("tests/")
         || trimmed.starts_with("docs/")

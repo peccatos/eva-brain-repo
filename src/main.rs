@@ -15,7 +15,7 @@ use eva_runtime_with_task_validator::{
     print_benchmark, print_bounded_run_report, print_campaign, print_campaign_report,
     print_capability_policy, print_create_task, print_determinism_audit,
     print_determinism_audit_json, print_eva_status, print_evolution_policy, print_final_rc_report,
-    print_fitness, print_future_phases, print_future_phases_json, print_hygiene_plan,
+    print_fitness, print_fix, print_future_phases, print_future_phases_json, print_hygiene_plan,
     print_hygiene_report, print_last_bounded_run, print_last_campaign_report,
     print_last_evidence_bundle, print_last_external_patch_package, print_last_pr_package,
     print_last_recovery_manifest, print_last_release, print_last_report,
@@ -42,12 +42,13 @@ use eva_runtime_with_task_validator::{
     review_candidate, run_benchmark, run_bounded_evolution, run_demo, run_evolution_cycle,
     run_planned_cycles, run_planned_evolution_cycle, run_recombined_evolution_cycle,
     run_repo_patch_report, run_stored_campaign, run_task_from_path, run_tui, serve_runtime_daemon,
-    should_run_repo_patch_mode, suggest_strategy_tasks, supervise_task, CycleInput,
-    RepoPatchCliConfig, RuntimeCliCommand, RuntimeCycleRunner, RUNTIME_CLI_HELP,
+    should_run_repo_patch_mode, suggest_strategy_tasks, supervise_task, CycleInput, FixOnly,
+    FixRequest, FixRiskCap, RepoPatchCliConfig, RuntimeCliCommand, RuntimeCycleRunner,
+    RUNTIME_CLI_HELP,
 };
 use serde::Deserialize;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 fn main() {
     let args = std::env::args().skip(1).collect::<Vec<_>>();
@@ -1520,6 +1521,7 @@ fn handle_agent_cli(args: &[String]) -> Option<Result<String, String>> {
         return None;
     }
     match args[0].as_str() {
+        "fix" | "--fix" if args.len() >= 2 => Some(parse_fix_cli(args).and_then(print_fix)),
         "task" | "--task" if args.len() >= 2 => {
             Some(print_create_task("memory", &args[1..].join(" ")))
         }
@@ -1575,6 +1577,104 @@ fn handle_agent_cli(args: &[String]) -> Option<Result<String, String>> {
         "specimen" if args.len() == 2 && args[1] == "list" => Some(print_specimen_list("memory")),
         _ => None,
     }
+}
+
+fn parse_fix_cli(args: &[String]) -> Result<FixRequest, String> {
+    let mut target_path = None::<PathBuf>;
+    let mut dry_run = true;
+    let mut apply = false;
+    let mut only = None::<FixOnly>;
+    let mut max_files = 3usize;
+    let mut risk_cap = FixRiskCap::Low;
+    let mut no_llm = false;
+    let mut provider = None::<String>;
+    let mut evidence_dir = PathBuf::from(".eva/fix");
+
+    let mut index = 1usize;
+    while index < args.len() {
+        match args[index].as_str() {
+            "--dry-run" => {
+                dry_run = true;
+                apply = false;
+                index += 1;
+            }
+            "--apply" => {
+                apply = true;
+                dry_run = false;
+                index += 1;
+            }
+            "--only" => {
+                let value = args
+                    .get(index + 1)
+                    .ok_or_else(|| "missing value for --only".to_string())?;
+                only = Some(match value.as_str() {
+                    "cargo-check" => FixOnly::CargoCheck,
+                    "ci" => FixOnly::Ci,
+                    "tests" => FixOnly::Tests,
+                    "docs" => FixOnly::Docs,
+                    other => return Err(format!("unsupported --only value: {other}")),
+                });
+                index += 2;
+            }
+            "--max-files" => {
+                let value = args
+                    .get(index + 1)
+                    .ok_or_else(|| "missing value for --max-files".to_string())?;
+                max_files = value
+                    .parse::<usize>()
+                    .map_err(|error| format!("invalid --max-files: {error}"))?;
+                index += 2;
+            }
+            "--risk" => {
+                let value = args
+                    .get(index + 1)
+                    .ok_or_else(|| "missing value for --risk".to_string())?;
+                risk_cap = match value.as_str() {
+                    "low" => FixRiskCap::Low,
+                    "medium" => FixRiskCap::Medium,
+                    other => return Err(format!("unsupported --risk value: {other}")),
+                };
+                index += 2;
+            }
+            "--no-llm" => {
+                no_llm = true;
+                index += 1;
+            }
+            "--provider" => {
+                let value = args
+                    .get(index + 1)
+                    .ok_or_else(|| "missing value for --provider".to_string())?;
+                provider = Some(value.clone());
+                index += 2;
+            }
+            "--evidence-dir" => {
+                let value = args
+                    .get(index + 1)
+                    .ok_or_else(|| "missing value for --evidence-dir".to_string())?;
+                evidence_dir = PathBuf::from(value);
+                index += 2;
+            }
+            value if target_path.is_none() => {
+                target_path = Some(PathBuf::from(value));
+                index += 1;
+            }
+            other => return Err(format!("unsupported fix argument: {other}")),
+        }
+    }
+
+    let target_path = target_path.ok_or_else(|| "missing fix target path".to_string())?;
+    Ok(FixRequest {
+        fix_id: eva_runtime_with_task_validator::agent::storage::id("fix"),
+        target_path,
+        dry_run,
+        apply,
+        only,
+        max_files,
+        risk_cap,
+        no_llm,
+        provider,
+        evidence_dir,
+    })
 }
 
 fn resolve_corpus_alias(memory_root: &str, corpus_id: &str) -> Result<String, String> {

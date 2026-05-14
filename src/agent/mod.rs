@@ -1,5 +1,6 @@
 pub mod apply;
 pub mod approve;
+pub mod fix;
 pub mod inspect;
 pub mod outcome;
 pub mod plan;
@@ -18,6 +19,7 @@ pub mod validate;
 
 pub use apply::{apply_proposal, dry_run_apply, print_apply_dry_run, print_apply_proposal};
 pub use approve::{approve_proposal, print_approve_proposal};
+pub use fix::{print_fix, run_fix};
 pub use inspect::{inspect_workspace, print_workspace_inspection};
 pub use outcome::{
     build_task_outcome, list_task_outcomes, print_task_outcome, print_task_outcomes,

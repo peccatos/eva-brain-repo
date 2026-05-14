@@ -218,6 +218,21 @@ Additional docs:
 - `docs/repo_aware_planner.md`
 - `docs/task_outcome_memory.md`
 - `docs/agent_v2_readiness.md`
+
+## EVE Fix
+
+```bash
+cargo run -- fix .
+cargo run -- fix . --apply
+cargo run -- fix . --only ci
+cargo run -- fix . --only tests
+```
+
+`fix` is a safe facade command over EVE's governed repair pipeline. It detects one actionable issue, proposes a minimal patch, stores evidence, and only mutates files with `--apply`.
+
+See also:
+
+- `docs/phase_21_eve_fix.md`
 - `docs/phase_18_outcome_learning.md`
 - `docs/phase_19_work_fitness.md`
 - `docs/phase_20_governed_self_improvement.md`

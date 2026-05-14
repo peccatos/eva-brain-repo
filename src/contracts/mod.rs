@@ -15,6 +15,7 @@ pub mod evolution_log;
 pub mod evolution_report;
 pub mod external_patch_package;
 pub mod final_rc_report;
+pub mod fix;
 pub mod future_phase;
 pub mod governance;
 pub mod llm;
@@ -83,6 +84,10 @@ pub use evolution_log::{EvolutionLogEntry, EvolutionStatus, ValidationStatus};
 pub use evolution_report::EvolutionReport;
 pub use external_patch_package::ExternalPatchPackage;
 pub use final_rc_report::FinalRcReport;
+pub use fix::{
+    FixDetectedProblem, FixEvidencePaths, FixMode, FixOnly, FixProblemKind, FixReport, FixRequest,
+    FixRiskCap, FixStatus,
+};
 pub use future_phase::{FuturePhaseEntry, FuturePhaseRegistry};
 pub use governance::{ApprovalStatus, GovernanceStatus, GovernanceTrustGate};
 pub use llm::{LlmPurpose, LlmRequest, LlmResponse, LlmStatus, SanitizedContext};

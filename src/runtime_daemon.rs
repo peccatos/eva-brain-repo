@@ -45,6 +45,14 @@ pub const RUNTIME_CLI_HELP: &str = r#"EVA runtime commands:
   cargo run -- repo-map
       Build a deterministic local repo map for agent planning.
 
+  cargo run -- fix <TARGET_PATH>
+      Detect one actionable local repair, create a governed proposal, store evidence, and print a concise fix report.
+
+  cargo run -- fix <TARGET_PATH> --dry-run
+  cargo run -- fix <TARGET_PATH> --apply
+  cargo run -- fix <TARGET_PATH> --only cargo-check|ci|tests|docs
+      Run the product-facing safe fix facade in dry-run or apply mode.
+
   cargo run -- plan <TASK_ID>
       Create a deterministic agent plan.
 
